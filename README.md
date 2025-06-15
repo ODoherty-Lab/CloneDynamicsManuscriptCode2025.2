@@ -12,6 +12,6 @@ Functions are defined in the .R files of the HelpingFunctions folder. Simple obj
 simpleTable: a numeric data frame where a column is a clone (colnames are just numbered indices) and each row is a timepoint, gives clone size at time.
 newTimes: a vector of the years, corresponding to rows of simpleTable.
 
-Supp Data 4 and 5, containing a clean version of source data, should be downloaded from paper and added to the Supp Data folder.
+Supp Data 4 and 5, containing a clean version of source data, should be downloaded from paper and added to the Supp Data folder. Note the .RProj isn't strictly necessary but it avoids having to change any directory paths as its directory is automatically accessed by here::here() in R.
 
 I'll also soon upload an output knit HTML/PDF from the figure-making markdown file, and further break up the .R files into subfolders/subfiles for ease of searching.
