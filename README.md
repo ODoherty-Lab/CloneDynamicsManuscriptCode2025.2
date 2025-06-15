@@ -11,3 +11,5 @@ First, SuppDataToRDSObjects.R can be run on Supp Data to reproduce RDS objects a
 Functions are defined in the .R files of the HelpingFunctions folder. Simple objects are just 2-element lists with first element is "simpleTable" and second is "newTimes".
 simpleTable: a numeric data frame where a column is a clone (colnames are just numbered indices) and each row is a timepoint, gives clone size at time.
 newTimes: a vector of the years, corresponding to rows of simpleTable.
+
+Supp Data 4 and 5, containing a clean version of source data, should be downloaded from paper and added to the Supp Data folder.
