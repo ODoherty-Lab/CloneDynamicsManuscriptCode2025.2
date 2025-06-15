@@ -1,0 +1,305 @@
+---
+title: "ProduceMorisitaFiguresAndSuppData78"
+author: "Sam Weissman"
+output: html_document
+---
+
+Set paths, load in RDS files required and helping code.
+```{r}
+library(Barnard)
+
+base = here::here()
+
+source(paste0(base, "/MorisitaDataAndFigures/HelpingFunctions/TCRHelpFunctions.R"))
+source(paste0(base, "/MorisitaDataAndFigures/HelpingFunctions/OverlapMeasuresAndTests.R"))
+source(paste0(base, "/MorisitaDataAndFigures/HelpingFunctions/GeneralFigureFunctions.R"))
+source(paste0(base, "/MorisitaDataAndFigures/HelpingFunctions/MakingDataSummaryTables.R"))
+
+provirusObjects = readRDS(paste0(base, "/MorisitaDataAndFigures/RDSObjects/ProvirusSimpleObjects.rds"))
+correctedTCRObjects = readRDS(paste0(base, "/MorisitaDataAndFigures/RDSObjects/TCRSimpleObjectsPCorrected.rds"))
+TCRFullTables = readRDS(paste0(base, "/MorisitaDataAndFigures/RDSObjects/TCRFullTables.rds")) # can be a min since these are big
+CT2ObjectWMultiples = readRDS(paste0(base, "/MorisitaDataAndFigures/RDSObjects/CT2WMultiples.rds")) 
+
+
+##### SETS NUMBER OF PERMUTATIONS SHOWN IN EACH HISTOGRAM; SET TO 10,000 FOR MANUSCRIPT
+histogramSims = 100
+
+
+```
+
+
+
+Produce figure 2
+```{r}
+# FIRST PART OF TABLE 2B
+
+outTablePre <- getObjectAtTimepoints(provirusObjects$CT2, c(6.1, 8.9, 9.9))$simpleTable # takes object with table of clone sizes in CT2, keeps timepoints 6.1, 8.9, 9.9 years on ART
+totalProvirusesSequenced <- rowSums(outTablePre)
+outTable <- sortSimpleTableCols(outTablePre, cutoff = 5) # Sorts columns of clone sizes by total size across years, keeps if total size >5.
+outTable <- outTable[,c(1:5,7,6,8)] # matches ordering in paper
+outTable <- cbind(outTable, totalProvirusesSequenced)
+colnames(outTable) = c(1:(ncol(outTable)-1), "Total # of Proviruses")
+
+print(outTable)
+
+# HYPOTHESIS TESTS OF TABLE 2B
+pVals6.1vs8.9 <- apply(outTable[,-ncol(outTable)], 2, function(vec) {
+  quiet_barnard(vec[1], vec[2], totalProvirusesSequenced[1], totalProvirusesSequenced[2])*2 # Two-sided Barnard with Bonferroni correct for two comparisons between timepoints
+})
+pVals8.9vs9.9 <- apply(outTable[,-ncol(outTable)], 2, function(vec) {
+  quiet_barnard(vec[2], vec[3], totalProvirusesSequenced[2], totalProvirusesSequenced[3])*2
+})
+
+significant <- paste(which(as.numeric(indexWiseMin(pVals6.1vs8.9, pVals8.9vs9.9)) < .05), collapse = ", ")
+print(paste0("These clones, tested on their own, had significant size changes between timepoints: ", significant))
+
+# SECOND PART OF TABLE 2B
+estimatedHIVInBlood <- c("6.1"=1.2E9, "8.9"=8.4E8, "9.9"=9.2E8) # based on HIV DNA/1E6 CD4 T cells * T cells/mL * estimated blood volume
+outTableBottom <- apply(outTable[,-ncol(outTable)], 2, function(vec) {
+ signif(estimatedHIVInBlood*vec/totalProvirusesSequenced/1E6, 2)
+})
+
+print("Total in vivo clone sizes in millions HIV DNA:")
+print(cbind(outTableBottom, estimatedHIVInBlood))
+
+
+
+# PART 2C
+par(mfrow = c(1,3))
+MakeVenn(CT2ObjectWMultiples$simpleTable, 6,7,UseNumOverlap = TRUE, col1,col2,col3, Alpha = 1) # colors defined in helper file, 6 and 7 are rows of the two 8.9 timepoints.
+MakeVenn(CT2ObjectWMultiples$simpleTable, 6,7,UseNumOverlap = FALSE, col1,col2,col3, Alpha = 1) # useNumOVerlap = FALSE tells it to use Morisita
+makeImageFromSharpNullProviruses(CT2ObjectWMultiples$simpleTable[6,],CT2ObjectWMultiples$simpleTable[7,], nSims = histogramSims, "CT2", 
+                                 "8.9a", "8.9b", yLims = c(0, histogramSims/3)) 
+
+
+# PART 2D
+makeVennPanel(provirusObjects$CT2, 6.1, 8.9, nSims = histogramSims, doOverlap = T, TCRFullTable = NULL, participantName="CT2", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# PART 2E
+makeVennPanel(provirusObjects$CT2, 8.9, 9.9, nSims = histogramSims, doOverlap = T, TCRFullTable = NULL, participantName="CT2", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# PART 2F
+makeVennPanel(provirusObjects$CT2, 6.1, 9.9, nSims = histogramSims, doOverlap = T, TCRFullTable = NULL, participantName="CT2", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+```
+
+
+
+Produce Figure 3
+```{r}
+
+# Part 3A Left
+makeVennPanel(correctedTCRObjects$CT1, 0.9, 8.2, nSims = histogramSims, doOverlap = T, TCRFullTable = TCRFullTables$CT1, participantName="CT1", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+
+# Part 3A Right
+makeVennPanel(correctedTCRObjects$CT2, 2.1, 9.9, nSims = histogramSims, doOverlap = T, TCRFullTable = TCRFullTables$CT2, participantName="CT2", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+
+# Part 3B Left
+makeVennPanel(provirusObjects$CT1, 0.9, 8.2, nSims = histogramSims, doOverlap = T, TCRFullTable = NULL, participantName="CT1", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+
+# Part 3B Right
+makeVennPanel(provirusObjects$CT2, 2.1, 9.9, nSims = histogramSims, doOverlap = T, TCRFullTable = NULL, participantName="CT2", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+
+# P-value TCR vs Provirus Left (CT1)
+getMultiTestMorisitaPVals(object1 = provirusObjects$CT1, object2 = correctedTCRObjects$CT1, year1 = 0.9, year2 = 8.2)
+
+
+# P-value TCR vs Provirus Right (CT2)
+getMultiTestMorisitaPVals(object1 = provirusObjects$CT2, object2 = correctedTCRObjects$CT2, year1 = 2.1, year2 = 9.9)
+
+
+```
+
+Figure 4
+
+```{r}
+
+
+# PART 4A LEFT
+makeVennPanel(provirusObjects$EC4, 18.5, 20.5, nSims = histogramSims, doOverlap = F, TCRFullTable = NULL, participantName="EC4", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# PART 4A RIGHT
+makeVennPanel(correctedTCRObjects$EC4, 18.5, 20.5, nSims = histogramSims, doOverlap = F, TCRFullTable = TCRFullTables$EC4, participantName="EC4", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# Part 4A P-Value
+getMultiTestMorisitaPVals(object1 = provirusObjects$EC4, object2 = correctedTCRObjects$EC4, year1 = 18.5, year2 = 20.5)
+
+
+
+
+# PART 4B LEFT
+makeVennPanel(provirusObjects$CT9, 3.0, 4.9, nSims = histogramSims, doOverlap = F, TCRFullTable = NULL, participantName="CT9", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# PART 4B RIGHT
+makeVennPanel(correctedTCRObjects$CT9, 3.0, 4.9, nSims = histogramSims, doOverlap = F, TCRFullTable = TCRFullTables$CT9, participantName="CT9", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# Part 4B P-Value
+getMultiTestMorisitaPVals(object1 = provirusObjects$CT9, object2 = correctedTCRObjects$CT9, year1 = 3.0, year2 = 4.9)
+
+
+# 4A vs 4B P-value EC4 vs CT9 proviruses
+getMultiTestMorisitaPVals(object1 = provirusObjects$EC4, object2 = provirusObjects$CT9, year1 = 18.5, year2 = 20.5,
+                          year1b = 3.0, year2b = 4.9)
+
+
+
+
+
+
+
+
+# PART 4C LEFT
+makeVennPanel(provirusObjects$EC5, 15.1, 16.4, nSims = histogramSims, doOverlap = F, TCRFullTable = NULL, participantName="EC5", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# PART 4C RIGHT
+makeVennPanel(correctedTCRObjects$EC5, 15.1, 16.4, nSims = histogramSims, doOverlap = F, TCRFullTable = TCRFullTables$EC5, participantName="EC5", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# Part 4C P-Value
+getMultiTestMorisitaPVals(object1 = provirusObjects$EC5, object2 = correctedTCRObjects$EC5, year1 = 15.1, year2 = 16.4)
+
+
+
+
+# PART 4D LEFT
+makeVennPanel(provirusObjects$CT8, 2.3, 4.3, nSims = histogramSims, doOverlap = F, TCRFullTable = NULL, participantName="CT8", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# PART 4D RIGHT
+makeVennPanel(correctedTCRObjects$CT8, 2.3, 4.3, nSims = histogramSims, doOverlap = F, TCRFullTable = TCRFullTables$CT8, participantName="CT8", xLims = c(0, 0.7), yLims = c(0, histogramSims/3), lwd1 = 2, lwd2 = 2)
+
+# Part 4D P-Value
+getMultiTestMorisitaPVals(object1 = provirusObjects$CT8, object2 = correctedTCRObjects$CT8, year1 = 2.3, year2 = 4.3)
+
+
+# 4C vs 4D P-value EC5 vs CT8 proviruses
+getMultiTestMorisitaPVals(object1 = provirusObjects$EC5, object2 = provirusObjects$CT8, year1 = 15.1, year2 = 16.4,
+                          year1b = 2.3, year2b = 4.3)
+
+
+
+
+```
+
+
+Figure 5
+
+
+```{r}
+# Setup
+CT2Times <- getLengthsAndMeans(as.numeric(CT2ObjectWMultiples$newTimes)) # see documentation; gives the time length of all the intervals between timepoints and the average year of each interval.
+Setup <- as.data.frame(cbind(Logit_Distance=-getDistanceMatrix(CT2ObjectWMultiples$simpleTable, TRUE, Adjustment = 1,TRUE), 
+                             Time_Elapsed=CT2Times$lengths, Time_On_ART=CT2Times$means)) # matrix with columns with logit morisita distance (i.e. negative logit morisita overlap), time elapsed, and average time on ART for every PAIR of timepoints.
+
+
+library(ggpubr)
+basePlot <- ggplot(Setup, aes(x = Time_Elapsed, y = Logit_Distance,color=Time_On_ART, size=4,alpha=1)) +scale_y_continuous(labels=function(x)round(exp(x)/(1+exp(x)),digits=2))+
+  scale_x_continuous(breaks = c(0,4,8,12)) +
+ 
+  theme(
+    axis.title.x = element_text(size = 25),
+    axis.text.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    legend.title = element_text(size=20),
+    title = element_text(size=25)) + theme_pubr() + scale_color_gradient(low="#E5F5E0", high="#1B9E77")
+
+
+# Part A
+(basePlot + ggtitle("Fig. 5a") + geom_point(size=12, alpha=0.65)) %>% 
+  addToGraph(simpleObject = provirusObjects$CT2, addPoints = FALSE, addLine = TRUE, lineCol = "#1B9E77", linetype = "solid", lineSize = 6) # addToGraph auto-adds regression line for CT2.
+
+
+### can do a permanova test that logit morisita has linear correlation with time elapsed
+### permanova uses that if you know a distance matrix, you can calculate the sum of the squared distances to the centroid of the points (this is sum of squared distances between points divided by the number of points)
+### this allows calculation of a pseudo-F value when projecting distances onto linear function of time, and comparison to pseudo-F values from projections after randomly permuting the timepoints. p-value is just a permutation test: percent of permuted pseudoFs equal to at least the observed pseudoF. 
+
+library(LDM)
+yCT2 = as.matrix(-getMorisitaSimilarities(provirusObjects$CT2)$sims)
+print(suppressMessages(permanovaFL(yCT2 ~ as.numeric(provirusObjects$CT2$newTimes)))$p.permanova)
+yCT1 = as.matrix(-getMorisitaSimilarities(provirusObjects$CT1)$sims)
+print(suppressMessages(permanovaFL(yCT1 ~ as.numeric(provirusObjects$CT1$newTimes), verbose = F))$p.permanova)
+
+
+# Part B
+ # add trendlines of morisita as funciton of time elapsed for several participants, and add the points for EC1/EC2
+(basePlot + ggtitle("Fig. 5b") + geom_point(size=10, alpha=0.4)) %>%
+  addToGraph(simpleObject = NewSimpleObjectsNoSubset$CT9, addPoints = FALSE, addLine = TRUE, lineCol = "#22c571dc", linetype = "dotted", lineSize = 4.5) %>%
+  addToGraph(simpleObject = provirusObjects$CT1, addPoints = FALSE, addLine = TRUE, lineCol = "#20b98bff", linetype = "dashed", lineSize = 4.5) %>%
+  addToGraph(simpleObject = provirusObjects$CT2, addPoints = FALSE, addLine = TRUE, lineCol = "#1B9E77", linetype = "solid", lineSize = 4.5) %>%
+  addToGraph(simpleObject = provirusObjects$EC4, addPoints = FALSE, addLine = TRUE, lineCol = "#32a1e3ff", linetype = "dashed", lineSize = 4.5) %>%
+  addToGraph(simpleObject = provirusObjects$EC5, addPoints = FALSE, addLine = TRUE, lineCol = "#13c8faff", linetype = "dashed", lineSize = 4.5) %>%
+  addToGraph(simpleObject = provirusObjects$EC4, addPoints = TRUE, addLine = FALSE, pointCol = "#32a1e3ff", psize = 10) %>%
+  addToGraph(simpleObject = provirusObjects$EC5, addPoints = TRUE, addLine = FALSE, pointCol = "#13c8faff", psize = 10)
+
+
+
+
+# Part C
+
+# remake the setup without the CT2 points in background
+basePlot2 <- ggplot(Setup, aes(x = Time_Elapsed, y = Logit_Distance, size=4,alpha=1)) +scale_y_continuous(labels=function(x)round(exp(x)/(1+exp(x)),digits=2))+
+  scale_x_continuous(breaks = c(0,4,8,12)) +
+ 
+  theme(
+    axis.title.x = element_text(size = 25),
+    axis.text.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    legend.title = element_text(size=20),
+    title = element_text(size=25)) + theme_pubr()
+
+# for speed for the TCRs, we pre-calculate the morisita distance matrices:
+TCRDistMats <- list()
+for (i in 1:length(correctedTCRObjects)) {
+  TCRDistMats[[names(correctedTCRObjects)[i]]] <- getDistanceMatrix(correctedTCRObjects[[i]]$simpleTable, TRUE, Adjustment = 1,TRUE)
+}
+
+# add trendlines for TCRs
+(basePlot2 + ggtitle("Fig. 5c") + geom_point(size=10,alpha=0)) %>%
+    addToGraph(simpleObject = provirusObjects$EC4, addPoints = FALSE, addLine = TRUE, lineCol = "#489ccc99", linetype = "dashed", lineSize = 4.5, lineAlpha = .6) %>%
+  addToGraph(simpleObject = provirusObjects$EC5, addPoints = FALSE, addLine = TRUE, lineCol = "#81bee199", linetype = "dashed", lineSize = 4.5, lineAlpha = .6) %>%
+  addToGraph(simpleObject = correctedTCRObjects$CT2,  distanceMat = -TCRDistMats$CT2, addPoints = FALSE, addLine = TRUE, lineCol = "#d1acfeff", linetype = "dashed", lineSize = 4.5) %>%
+  addToGraph(simpleObject = correctedTCRObjects$CT1,  distanceMat = -TCRDistMats$CT1, addPoints = FALSE, addLine = TRUE, lineCol = "#d1acfeff", linetype = "dashed", lineSize = 4.5) %>%
+  addToGraph(simpleObject = correctedTCRObjects$CT9,  distanceMat = -TCRDistMats$CT9, addPoints = FALSE, addLine = TRUE, lineCol = "#d1acfeff", linetype = "dashed", lineSize = 4.5) %>%
+  addToGraph(simpleObject = correctedTCRObjects$EC4,  distanceMat = -TCRDistMats$EC4, addPoints = FALSE, addLine = TRUE, lineCol = "#d1acfeff", linetype = "dashed", lineSize = 4.5) %>%
+  addToGraph(simpleObject = correctedTCRObjects$EC5,  distanceMat = -TCRDistMats$EC5, addPoints = FALSE, addLine = TRUE, lineCol = "#d1acfeff", linetype = "dashed", lineSize = 4.5) %>%
+  addToGraph(simpleObject = provirusObjects$CT9, addPoints = FALSE, addLine = TRUE, lineCol = "#22c57199", linetype = "dotted", lineSize = 4.5, lineAlpha = 1) %>%
+  addToGraph(simpleObject = provirusObjects$CT1, addPoints = FALSE, addLine = TRUE, lineCol = "#1b9e7799", linetype = "dashed", lineSize = 4.5, lineAlpha = 1) %>%
+  addToGraph(simpleObject = provirusObjects$CT2, addPoints = FALSE, addLine = TRUE, lineCol = "#20b98b99", linetype = "solid", lineSize = 4.5, lineAlpha = 1) %>%
+  addToGraph(simpleObject = correctedTCRObjects$CT2, distanceMat = -TCRDistMats$CT2, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
+  addToGraph(simpleObject = correctedTCRObjects$CT1, distanceMat = -TCRDistMats$CT1, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
+  addToGraph(simpleObject = correctedTCRObjects$CT9, distanceMat = -TCRDistMats$CT9, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
+ addToGraph(simpleObject = correctedTCRObjects$EC1, distanceMat = -TCRDistMats$EC1, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
+  addToGraph(simpleObject = correctedTCRObjects$EC2, distanceMat = -TCRDistMats$EC2, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8)
+
+
+
+```
+
+
+Make and save Supp Data 7 and 8
+```{r, eval = FALSE}
+
+# Supp Data 7
+# Uses resamples = 10000 in paper
+simpleObjectSheets <- makeVennSheetsList(list(), provirusObjects, "Proviruses", FALSE)
+simpleObjectSheets <- makeVennSheetsList(simpleObjectSheets, correctedTCRObjects)
+library(openxlsx)
+write.xlsx(simpleObjectSheets, file=paste0(base, "MorisitaDataAndFigures/SuppData/SupplementaryData7.xlsx"),rowNames=F, colNames=FALSE)
+
+
+
+# Supp Data 8
+# Uses resamples = 10000 in paper.
+CT1s <- getPairwiseComparisonSheet(provirusObjects$CT1, correctedTCRObjects$CT1, TCRFullTables$CT1, resamples = 50)
+CT2s <- getPairwiseComparisonSheet(provirusObjects$CT2, correctedTCRObjects$CT2, TCRFullTables$CT2, resamples = 50)
+CT8s <- getPairwiseComparisonSheet(provirusObjects$CT8, correctedTCRObjects$CT8, TCRFullTables$CT8, resamples = 50)
+CT9s <- getPairwiseComparisonSheet(provirusObjects$CT9, correctedTCRObjects$CT9, TCRFullTables$CT9, resamples = 50)
+EC4s <- getPairwiseComparisonSheet(provirusObjects$EC4, correctedTCRObjects$EC4, TCRFullTables$EC4, resamples = 50)
+EC5s <- getPairwiseComparisonSheet(provirusObjects$EC5, correctedTCRObjects$EC5, TCRFullTables$EC5, resamples = 50)
+together = list(CT1=CT1s, CT2=CT2s, CT8 = CT8s, CT9=CT9s, EC4=EC4s, EC5=EC5s)
+write.xlsx(together, file=paste0(base, "/MorisitaDataAndFigures/SuppData/SupplementaryData8.xlsx"), rowNames = F, colNames = F)
+
+
+```
