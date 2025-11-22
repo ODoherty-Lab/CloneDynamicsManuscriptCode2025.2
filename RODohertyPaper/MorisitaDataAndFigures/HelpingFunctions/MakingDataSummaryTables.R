@@ -98,10 +98,12 @@ restrictTCRMatrixToObject <- function(TCRMatrix, TCRObject) {
 # So addendum should be a short (or empty) string;  these will become sheet names in excel.
 # Last 3 arguments are from makeVennSheet and are passed along.
 # Adds to each venn sheet an extra column which is the slope of the logit morisita line as in figure 5, with a fixed intercept.
-makeVennSheetsList <- function(vennSheets = list(), simpleObjectsArg, addendum, includeDeltasInterval = TRUE, resamples = 10000, includeResampleP = TRUE) {
+# if doing "includeResampleP", adding a list of fullTCRTable will lead to permutations on the replicates, whereas adding none or having list index equal to 0 (e.g. with proviruses) will lead to permutation of each provirus.
+makeVennSheetsList <- function(vennSheets = list(), simpleObjectsArg, addendum, includeDeltasInterval = TRUE, resamples = 10000, includeResampleP = TRUE, fullTCRTables = NULL) {
   for (i in 1:length(simpleObjectsArg)) {
+    fullTCRTable <- if (is.null(fullTCRTables)) 0 else fullTCRTables[[i]]
     # wrapper for making venn sheet.
-    vennSheet <- makeVennSheet(simpleObjectsArg[[i]],includeDeltasInterval = includeDeltasInterval, resamples = resamples, includeResampleP = includeResampleP)
+    vennSheet <- makeVennSheet(simpleObjectsArg[[i]],includeDeltasInterval = includeDeltasInterval, resamples = resamples, includeResampleP = includeResampleP, fullTCRTable = fullTCRTable)
     
     # adding slope
     distMat <- -getDistanceMatrix(simpleObjectsArg[[i]]$simpleTable, TRUE, Adjustment = 1,TRUE, useHorn=FALSE)
@@ -123,7 +125,8 @@ makeVennSheetsList <- function(vennSheets = list(), simpleObjectsArg, addendum, 
 # For this, uses a simple object to include basic information about factors going into Morisita Venn Diagram and 
 # The Morisita Venn Diagram numbers themselves. Note that if there are no cross-timepoint clone pairs, we assume 2 in the Venn Diagram.
 # Can also include a delta confidence interval on the Morisita center, and a permutation test p-value based on the given number of resamples.
-makeVennSheet <- function(simpleObject, includeDeltasInterval = TRUE, includeResampleP = TRUE, resamples=1000) {
+# if doing "includeResampleP", adding a fullTCRTable will lead to permutations on the replicates, whereas having none (e.g. with proviruses) will lead to permutation of each provirus.
+makeVennSheet <- function(simpleObject, includeDeltasInterval = TRUE, includeResampleP = TRUE, resamples=1000, fullTCRTable = 0) {
   cloneTable <- simpleObject$simpleTable
   simpleObject$newTimes = as.numeric(simpleObject$newTimes)
   outTable <- c("Timepoint (TP) 1 Years on ART", "Timepoint (TP) 2 Years on ART", "Time Elapsed", "TP1 Samp Size", "TP2 Samp Size", "TP1 Clone Pairs", "2X Cross-Timepoint Clone Pairs",
@@ -138,7 +141,11 @@ makeVennSheet <- function(simpleObject, includeDeltasInterval = TRUE, includeRes
                                 simpleObject$newTimes[j] - simpleObject$newTimes[i]), 1),sum(cloneTable[i,]), sum(cloneTable[j,]),
                         getVennPairNumbers(cloneTable[i,], cloneTable[j,]),MorisitaVenns$b[c(1,3,2)]), 2)
       if (includeResampleP) {
-        newRow <- c(newRow, round(morisitaResamplingSignificance(cloneTable[i,], cloneTable[j,], simulatedPoints = resamples),3))
+        if (identical(fullTCRTable,0)) newRow <- c(newRow, round(morisitaResamplingSignificance(cloneTable[i,], cloneTable[j,], simulatedPoints = resamples),3))
+        else {
+          TCRresamplings <- TCRResamplingsTwoTimepoints(fullTCRTable, simpleObject$newTimes[i], simpleObject$newTimes[j], maxResamples = resamples)
+          newRow <- c(newRow, round(c(as.numeric(100*quantile(x=TCRresamplings$sim, probs=c(.05))), mean(TCRresamplings$sim < TCRresamplings$original)),3))
+        }
       }
       if (includeDeltasInterval) { # assumes NOT horn
         deltaEstimatedSD <- sqrt(deltaMorisitaVariance(cloneTable[i,], cloneTable[j,]))
@@ -155,4 +162,13 @@ makeVennSheet <- function(simpleObject, includeDeltasInterval = TRUE, includeRes
 # takes in two clone size vectors of equal lengths (corresponding indices), and outputs a single integer
 getVennPairNumbers <- function(clones1, clones2) {
   c(sum(clones1*(clones1-1)), 2*sum(clones1*clones2), sum(clones2*(clones2-1)))
+}
+
+
+# helpful function that just adds "" to a vector to make it reach a certain length
+pad <- function(preVec, totalLen) {
+  if (length(preVec) < totalLen) {
+    preVec <- c(preVec, rep("", totalLen-length(preVec)))
+  }
+  preVec
 }

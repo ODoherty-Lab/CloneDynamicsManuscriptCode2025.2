@@ -443,7 +443,7 @@ TCRResamplingsTwoTimepoints <- function(mat, year1, year2, maxResamples=2000) {
   
   ### some matrix cleanup since we just want the "Rep" columns and we don't want rows for Simpson and PerClones which don't reflect actual clone sizes. Also sometimes we did 12 replicates twice at a timepoint and the second set are marked "B"; we want to merge them.
   mat <- mat[,grep("Rep", colnames(mat))]
-  mat <- mat[,-grep("NumPoisitiveReps", colnames(mat))]
+  mat <- mat[,-grep("NumPositiveReps", colnames(mat))]
   
   if (length(grep("Simpsons", rownames(mat))) > 0) mat <- mat[-grep("Simpsons", rownames(mat)),]
   if (length(grep("PercClones", rownames(mat))) > 0) mat <- mat[-grep("PercClones", rownames(mat)),]
@@ -627,4 +627,13 @@ getMorisitaSimilarities <- function(simpleCloneObject, useLogit = TRUE) {
     }
   }
   list(sims = as.dist(outSims), times = as.dist(outTimes))
+}
+
+
+######## OTHER
+
+# takes a species abundance vectors for a single population, and returns the proportion of organisms belonging to a species present more than once.
+percentClones <- function(vec) {
+  vec = as.numeric(vec)
+  sum(vec[vec>1])/sum(vec)
 }
