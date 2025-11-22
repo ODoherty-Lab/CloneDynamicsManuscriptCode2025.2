@@ -1,6 +1,6 @@
 base = here::here()
-pathToSuppData5 = paste0(base, "/MorisitaDataAndFigures/SuppData/SupplementaryData5-ClonesTables.xlsx")
-pathToSuppData4 = paste0(base, "/MorisitaDataAndFigures/SuppData/SupplementaryData4-TCRsSequenced.xlsx")
+pathToSuppData5 = paste0(base, "/MorisitaDataAndFigures/SuppData/Supplementary Data 5-ClonesTables.xlsx")
+pathToSuppData4 = paste0(base, "/MorisitaDataAndFigures/SuppData/Supplementary Data 4-TCRsSequenced.xlsx")
 pathToTCRRDS = paste0(base, "/MorisitaDataAndFigures/RDSObjects/TCRSimpleObjects.rds")
 outFolderPath = paste0(base, "/MorisitaDataAndFigures/RDSObjects")
 
