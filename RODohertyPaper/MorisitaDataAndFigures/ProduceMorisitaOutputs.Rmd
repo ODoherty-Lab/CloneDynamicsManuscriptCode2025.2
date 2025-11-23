@@ -8,7 +8,7 @@ Set paths, load in RDS files required and helping code.
 ```{r}
 library(Barnard)
 
-base = here::here()
+base = paste0(here::here(), "/Downloads/RODohertyPaper")
 
 source(paste0(base, "/MorisitaDataAndFigures/HelpingFunctions/TCRHelpFunctions.R"))
 source(paste0(base, "/MorisitaDataAndFigures/HelpingFunctions/OverlapMeasuresAndTests.R"))
@@ -22,7 +22,8 @@ CT2ObjectWMultiples = readRDS(paste0(base, "/MorisitaDataAndFigures/RDSObjects/C
 
 
 ##### SETS NUMBER OF PERMUTATIONS SHOWN IN EACH HISTOGRAM; SET TO 10,000 FOR MANUSCRIPT
-histogramSims = 100
+histogramSims = 1000
+
 
 
 ```
@@ -188,6 +189,60 @@ Figure 5
 
 
 ```{r}
+
+
+CT2Times1 <- getLengthsAndMeans(as.numeric(CT2ObjectWMultiples$newTimes[1:7])) # see documentation; gives the time length of all the intervals between timepoints and the average year of each interval.
+Setup1 <- as.data.frame(cbind(Logit_Distance=-getDistanceMatrix(CT2ObjectWMultiples$simpleTable[1:7,], TRUE, Adjustment = 1,TRUE), 
+                             Time_Elapsed=CT2Times1$lengths, Time_On_ART=CT2Times1$means)) # matrix with columns with logit morisita distance (i.e. negative logit morisita overlap), time elapsed, and average time on ART for every PAIR of timepoints.
+
+
+
+CT2Times2 <- getLengthsAndMeans(as.numeric(CT2ObjectWMultiples$newTimes[4:11])) # see documentation; gives the time length of all the intervals between timepoints and the average year of each interval.
+Setup2 <- as.data.frame(cbind(Logit_Distance=-getDistanceMatrix(CT2ObjectWMultiples$simpleTable[4:11,], TRUE, Adjustment = 1,TRUE), 
+                             Time_Elapsed=CT2Times2$lengths, Time_On_ART=CT2Times2$means)) # matrix with columns with logit morisita distance (i.e. negative logit morisita overlap), time elapsed, and average time on ART for every PAIR of timepoints.
+
+
+early = late = provirusObjects$CT2
+early$simpleTable = early$simpleTable[1:5,]
+late$simpleTable = late$simpleTable[4:8,]
+early$newTimes = early$newTimes[1:5]
+late$newTimes = late$newTimes[4:8]
+
+library(ggpubr)
+basePlot1 <- ggplot(Setup1, aes(x = Time_Elapsed, y = Logit_Distance,color=Time_On_ART, size=4,alpha=1)) +scale_y_continuous(labels=function(x)round(exp(x)/(1+exp(x)),digits=2), limits = c(-3, 0))+
+  scale_x_continuous(breaks = c(0,4,8,12), limits=c(0,12)) +
+ 
+  theme(
+    axis.title.x = element_text(size = 25),
+    axis.text.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    legend.title = element_text(size=20),
+    title = element_text(size=25)) + theme_pubr() + scale_color_gradient(low="#E5F5E0", high="#67BF9E")
+
+library(ggpubr)
+basePlot2 <- ggplot(Setup2, aes(x = Time_Elapsed, y = Logit_Distance,color=Time_On_ART, size=4,alpha=1)) +scale_y_continuous(labels=function(x)round(exp(x)/(1+exp(x)),digits=2), limits = c(-3, 0))+
+  scale_x_continuous(breaks = c(0,4,8,12), limits = c(0,12)) +
+ 
+  theme(
+    axis.title.x = element_text(size = 25),
+    axis.text.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    legend.title = element_text(size=20),
+    title = element_text(size=25)) + theme_pubr() + scale_color_gradient(low="#99D4B9", high="#1B9E77")
+
+
+
+(basePlot1 + ggtitle("Fig. 5a") + geom_point(size=12, alpha=0.65)) %>% 
+  addToGraph(simpleObject = early, addPoints = FALSE, addLine = TRUE, lineCol = "#1B9E77", linetype = "solid", lineSize = 6) # addToGraph auto-adds regression line for CT2.
+
+
+(basePlot2 + ggtitle("Fig. 5a") + geom_point(size=12, alpha=0.65)) %>% 
+  addToGraph(simpleObject = late, addPoints = FALSE, addLine = TRUE, lineCol = "#1B9E77", linetype = "solid", lineSize = 6) # addToGraph auto-adds regression line for CT2.
+
+
+```
+
+```{r}
 # Setup
 CT2Times <- getLengthsAndMeans(as.numeric(CT2ObjectWMultiples$newTimes)) # see documentation; gives the time length of all the intervals between timepoints and the average year of each interval.
 Setup <- as.data.frame(cbind(Logit_Distance=-getDistanceMatrix(CT2ObjectWMultiples$simpleTable, TRUE, Adjustment = 1,TRUE), 
@@ -283,7 +338,10 @@ Make and save Supp Data 7 and 8
 
 # Supp Data 7
 # Uses resamples = 10000 in paper
-simpleObjectSheets <- makeVennSheetsList(list(), provirusObjects, "Proviruses", FALSE)
+
+correctedTCRObjects <- makeVennSheetsList(list(), correctedTCRObjects, "TCR", fullTCRTables = TCRFullTables, resamples = 10000)
+
+simpleObjectSheets <- makeVennSheetsList(list(), provirusObjects, "Proviruses", resamples = 10000)
 simpleObjectSheets <- makeVennSheetsList(simpleObjectSheets, correctedTCRObjects)
 library(openxlsx)
 write.xlsx(simpleObjectSheets, file=paste0(base, "MorisitaDataAndFigures/SuppData/SupplementaryData7.xlsx"),rowNames=F, colNames=FALSE)
