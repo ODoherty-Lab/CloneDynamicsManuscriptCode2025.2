@@ -10,9 +10,11 @@ Set paths, load in files required and helping code.
 ```{r}
 library(Barnard)
 
-base = paste0(here::here(), "/Downloads/RODohertyPaper")
+base = paste0(here::here(), "/Downloads/RODohertyPaper") # may need to modify depending where you open.
 
 source(paste0(base, "/InVitroDataAndFigures/HelpingFunctions/ProcessingInputInVitroData.R"))
+source(paste0(base, "/InVitroDataAndFigures/HelpingFunctions/organizeHeatmapData.R"))
+
 pathToSuppData <- paste0(base, "/InVitroDataAndFigures/SuppData/")
 
 siteData <- readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 3- T Cell Clone Sites TPM.xlsx"))
