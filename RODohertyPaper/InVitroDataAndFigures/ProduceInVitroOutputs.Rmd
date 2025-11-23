@@ -29,6 +29,8 @@ Each is a data frame with each row as an annotation, with 6 columns of annotatio
 
 Further, note that it is important for normalizing to total mapped reads that the order of columns is identical to the order of samples in the rows of the siteDataUsed data frame!
 
+Note the concatenated files are in Github; individual too large to upload to github.
+
 ```{r}
 
 #Don't include lncRNA, unknown sites, intergenics,  and the sample with integration in both Pirin/BMX, as we exclude when in multiple genes in opposite orientations.
@@ -39,6 +41,14 @@ sampleNames <- siteDataUsed$Name
 concatenatedExonFeatureCounts <- concatenateProcessedFilesBySampleNames(paste0(pathToSuppData, "RNASeqProcessed"), sampleNames, nameMatch, "exon.txt") # takes a minute or so.
 concatenatedGeneFeatureCounts <- concatenateProcessedFilesBySampleNames(paste0(pathToSuppData, "RNASeqProcessed"), sampleNames, nameMatch, "gene.txt") # faster
 totalMappedReads <- siteData$`Number of mapped reads`
+
+
+# write.csv(concatenatedExonFeatureCounts, paste0(pathToSuppData, "/RNASeqProcessed/concatenatedExonFeatureCounts.csv"))
+# write.csv(concatenatedGeneFeatureCounts, paste0(pathToSuppData, "/RNASeqProcessed/concatenatedGeneFeatureCounts.csv"))
+
+#### RUN THIS INSTEAD IF YOU"RE WORKING FROM GITHUB AND DON'T DOWNLOAD ALL THE INDIVIDUAL FILES
+concatenatedExonFeatureCounts <- read.csv(paste0(pathToSuppData, "/RNASeqProcessed/concatenatedExonFeatureCounts.csv"))[,-1]
+concatenatedGeneFeatureCounts <- read.csv(paste0(pathToSuppData, "/RNASeqProcessed/concatenatedGeneFeatureCounts.csv"))[,-1]
 
 ```
 
