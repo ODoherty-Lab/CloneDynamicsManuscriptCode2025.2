@@ -1,0 +1,1016 @@
+### Helper functions on standardized table/tabulated version of integration site data.
+### Can run many useful functions like merging data, calculating statistics, building tables/figures/etc.
+
+
+```{r}
+library(MASS)
+library(limma)
+library(kableExtra)
+
+tabulatedToPercentiles <- function(sizeVec, percentilesToTest) {
+  untabulated <- untabulate(sizeVec)
+  if (is.null(sizeVec)) {
+    return(numeric(length(percentilesToTest)))
+  }
+  if (is.null(percentilesToTest)) {
+    return(NULL)
+  }
+  as.numeric(quantile(untabulated, probs=percentilesToTest))
+}
+
+padVecs <- function(vecs) {
+  totalLength <- max(sapply(vecs, length))
+  for (i in 1:length(vecs)) {
+    if (length(vecs[[i]]) < totalLength) {
+      vecs[[i]] <- c(vecs[[i]], rep(0, totalLength - length(vecs[[i]])))
+    }
+  }
+  vecs
+}
+
+
+
+TabulateCategories <- function(DataMatrix, CancerRow, CancerValue, NotCancerValue, SenseRow, SenseValue,AntiValue,SizeRow) {
+  #Tabulates number of clones of each size in cancer sense. A number x at position i in ObsCPlus indicates there were x cancer sense clones of size i, treating each timepoint separately.
+  CPlus <- (as.matrix(DataMatrix[DataMatrix[,SenseRow] == SenseValue & DataMatrix[,CancerRow] == CancerValue,SizeRow])) 
+  CMinus <- (as.matrix(DataMatrix[DataMatrix[,SenseRow] == AntiValue & DataMatrix[,CancerRow] == CancerValue,SizeRow]))
+  NPlus <- (as.matrix(DataMatrix[DataMatrix[,SenseRow] == SenseValue & DataMatrix[,CancerRow] == NotCancerValue,SizeRow]))
+  NMinus <- (as.matrix(DataMatrix[DataMatrix[,SenseRow] == AntiValue & DataMatrix[,CancerRow] == NotCancerValue,SizeRow]))
+  
+  
+  
+  CPlusTab <- if(length(CPlus) == 0) NULL else tabulate(CPlus)
+  CMinusTab <- if(length(CMinus) == 0) NULL else tabulate(CMinus)
+  NPlusTab <- if(length(NPlus) == 0) NULL else tabulate(NPlus)
+  NMinusTab <- if(length(NMinus) == 0) NULL else tabulate(NMinus)
+  list(CPlusTab, CMinusTab, NPlusTab, NMinusTab)
+}
+
+
+
+categoriesUntabulated <- function(DataMatrix, CancerRow, CancerValue, NotCancerValue, SenseRow, SenseValue,AntiValue,SizeRow) {
+  CPlusTab <- as.matrix(DataMatrix[DataMatrix[,SenseRow] == SenseValue & DataMatrix[,CancerRow] == CancerValue,SizeRow]) #Tabulates number of clones of each size in cancer sense. A number x at position i in ObsCPlus indicates there were x cancer sense clones of size i, treating each timepoint separately.
+  CMinusTab <- as.matrix(DataMatrix[DataMatrix[,SenseRow] == AntiValue & DataMatrix[,CancerRow] == CancerValue,SizeRow])
+  NPlusTab <- as.matrix(DataMatrix[DataMatrix[,SenseRow] == SenseValue & DataMatrix[,CancerRow] == NotCancerValue,SizeRow])
+  NMinusTab <- as.matrix(DataMatrix[DataMatrix[,SenseRow] == AntiValue & DataMatrix[,CancerRow] == NotCancerValue,SizeRow])
+  
+  list(CPlusTab, CMinusTab, NPlusTab, NMinusTab)
+}
+
+CompressToEight <- function(SizeVec) {
+  c(SizeVec[1:7], sum(SizeVec[8:length(SizeVec)]))
+}
+
+
+untabulate <- function(tabulatedVec) {
+  outVec <- c()
+  for (i in 1:length(tabulatedVec)) {
+    if (tabulatedVec[i] > 0) {
+      outVec <- c(outVec, rep(i, tabulatedVec[i]))
+    }
+  }
+  outVec
+}
+
+
+tabulatedToTable <- function(tabulatedVersion, collapse) {
+  ObservedSizes <- padVecs(tabulatedVersion)
+  ObsCPlus<- ObservedSizes[[1]]  #Tabulates number of clones of each size in cancer sense. A number x at position i in ObsCPlus indicates there were x cancer sense clones of size i, treating each timepoint separately.
+  ObsCMinus <- ObservedSizes[[2]]
+  ObsNPlus <- ObservedSizes[[3]]
+  ObsNMinus<- ObservedSizes[[4]]
+  EmptySpots = which(ObsCPlus + ObsCMinus +  ObsNPlus + ObsNMinus == 0)
+
+  if (collapse == TRUE && length(EmptySpots) > 0) {
+    #Versions with values only represented where there are actually clones
+    CloneSizesCollapsed <- c(1:length(ObsCPlus))[-EmptySpots]
+    ObsCPlusCollapsed <- ObsCPlus[-EmptySpots]
+    ObsCMinusCollapsed <- ObsCMinus[-EmptySpots]
+    ObsNPlusCollapsed <- ObsNPlus[-EmptySpots]
+    ObsNMinusCollapsed <- ObsNMinus[-EmptySpots]
+    return(rbind(CloneSizesCollapsed, ObsCPlusCollapsed, ObsCMinusCollapsed, ObsNPlusCollapsed, ObsNMinusCollapsed))
+  }
+  else if (collapse == TRUE) {
+    rbind(1:length(ObsCPlus), ObsCPlus, ObsCMinus, ObsNPlus, ObsNMinus)
+  }
+  else {
+    return(rbind(ObsCPlus, ObsCMinus, ObsNPlus, ObsNMinus))
+  }
+  
+}
+
+collapseToX <- function(sizeVec, X=8) {
+  if (X < 1) {
+    return("ERR: X must be at least 1")
+  }
+  if (X == 1) {
+    return(sum(sizeVec))
+  }
+  
+  outVec <- sizeVec[1:min(length(sizeVec), (X-1))]
+  if (X <= length(sizeVec)) {
+    outVec <- c(outVec, sumGreaterThanXClonesUniquely(sizeVec, X = X-1))
+  }
+  else {
+    outVec <- c(outVec, rep(0, X-length(sizeVec)))
+  }
+  outVec
+}
+
+sumGreaterThanXClonesUniquely <- function(sizeVec, X = 0) {
+  if (X >= length(sizeVec)) {
+    return(0)
+  }
+  if (X != 0) {
+    GreaterThanX <- sum(sizeVec[-c(1:X)])
+  }
+  else {
+    GreaterThanX <- sum(sizeVec)
+  }
+  if (is.na(GreaterThanX)) {
+    GreaterThanX <- 0
+  }
+  GreaterThanX
+}
+sumGreaterThanXClones <- function(sizeVec, X = 0) {
+  GreaterThanX <- 0
+  if (X >= length(sizeVec)) {
+    return(0)
+  }
+  for (i in (X+1):length(sizeVec)) {
+    GreaterThanX <- GreaterThanX + i*sizeVec[i]
+  }
+  if (is.na(GreaterThanX)) {
+    GreaterThanX <- 0
+  }
+  GreaterThanX
+}
+
+GetAverageCloneSize <- function(SizeVec) {
+  if (sum(SizeVec) == 0) {
+    return(0)
+  }
+  sumGreaterThanXClones(SizeVec)/sum(SizeVec)
+}
+
+
+GetOddsOfClonality <- function(SizeVec, removeUpToAndIncluding = 2) {
+  if (length(SizeVec) <= removeUpToAndIncluding) {
+    return(0)
+  }
+  if (SizeVec[1] == 0) {
+    if (sum(SizeVec[(1+removeUpToAndIncluding):length(SizeVec)]) > 0) {
+      return(Inf)
+    }
+    else {
+      return(0)
+    }
+  }
+  sumGreaterThanXClones(SizeVec, removeUpToAndIncluding)/SizeVec[1]
+}
+
+#Gets odds of expanding by counting each clone once. WE WILL USE FOR 3C/F!!! 
+GetOddsOfExpansion <- function(SizeVec, removeUpToAndIncluding = 2) {
+  if (length(SizeVec) <= removeUpToAndIncluding) {
+    return(0)
+  }
+  if (SizeVec[1] == 0) {
+    if (sum(SizeVec[(1+removeUpToAndIncluding):length(SizeVec)]) > 0) {
+      return(Inf)
+    }
+    else {
+      return(0)
+    }
+  }
+  singletons <- SizeVec[1]
+  GreaterThanCutoff <- sum(SizeVec[(removeUpToAndIncluding+1):length(SizeVec)])
+  GreaterThanCutoff/singletons
+  
+}
+
+
+GetSimpson2 <- function(SizeVec) {
+  total <- sumGreaterThanXClones(SizeVec)
+  if (total == 0 || length(SizeVec) < 2) {
+    return(0)
+  }
+  Sums <- 0
+  for (i in 2:length(SizeVec)) {
+    Sums <- Sums + SizeVec[i]*i*(i-1)/(total*(total-1))
+  }
+  Sums
+}
+
+```
+
+
+
+
+### Helper functions to process rougher tables
+
+```{r}
+
+defaultAllTimeEvaluation <- function(vec) {
+  rep(TRUE, length(vec))
+}
+
+rowSumsCharacter <- function(characterMatrix) {
+  if (ncol(characterMatrix) == 1) {
+    return(as.numeric(as.character(characterMatrix[,1])))
+  }
+  rowSums(data.frame(apply(characterMatrix, 2, function(x) as.numeric(as.character(x)))))
+}
+
+tabulateParticipant <- function(stdTable, participantIDs = NULL, timeEvaluationFunc = defaultAllTimeEvaluation) {
+  
+  
+  if (length(participantIDs) != 0) {
+    stdTable <- stdTable[stdTable$Participant %in% participantIDs,]
+  }
+  
+  timeVars <- as.numeric(colnames(stdTable)[6:ncol(stdTable)])
+  
+  relevantCols <- 5 + which(timeEvaluationFunc(timeVars))
+  if (length(relevantCols) == 0) {
+    print("No data within time constraints")
+    return(list(NULL, NULL, NULL, NULL))
+  }
+  
+  stdTable <- cbind(stdTable, rowSums(as.data.frame(stdTable[,relevantCols])))
+  
+  TabulateCategories(DataMatrix = stdTable, CancerRow = 4, CancerValue = TRUE, NotCancerValue = FALSE,
+                                         SenseRow = 3, SenseValue = "Sense", AntiValue = "Antisense", SizeRow = ncol(stdTable))
+}
+
+tableToStandardParticipant <- function(inTable, geneColNum, oriColNum, sizeColNums, participantColNum = NULL, participantIDs = NULL, timeVars = NULL,
+                                       activeGeneColNum = 0, transformAliases=TRUE,
+                                       CRISPRaRef=NULL, addedGenes = NULL, removeUnmatchedGenes = FALSE) {
+  
+  if (length(participantColNum) == 1) {
+    participantIDs <- (as.character(inTable[,participantColNum]))
+  }
+  else if (length(participantIDs) == 1) {
+    participantIDs <- as.character(rep(participantIDs, nrow(inTable)))
+  }
+  else if (length(participantIDs) != nrow(inTable)) {
+    participantIDs <- rep(paste(c("ID:",round(runif(1, 1, 1000000))), collapse=""), nrow(inTable))
+  }
+  
+  if (length(timeVars) == 0) {
+    timeVars <- as.numeric(colnames(inTable)[sizeColNums])
+    if (sum(is.na(timeVars)) > 0) {
+      print("Specify time better")
+    }
+  }
+  
+  if (sum(duplicated(timeVars)) > 0 || length(timeVars) != length(sizeColNums)) {
+    
+    print("Process time vars better")
+    return(1)
+  }
+  
+  sizeColNums <- sizeColNums[order(timeVars)]
+  timeVars <- timeVars[order(timeVars)]
+  
+  smaller <- inTable[,c(geneColNum, oriColNum, sizeColNums)]
+  
+  
+  #Make sure orientations are as 1 for sense, 0 for antisense, if they're instead as "+" and "-" or TRUE and FALSE.
+  
+  if ("+" %in% smaller[,2] || "-" %in% smaller[,2] ) {
+    smaller[,2] <- as.numeric(smaller[,2] == "+")
+  }
+  
+  smaller[,2] <- as.numeric(smaller[,2])
+  for (i in 3:ncol(smaller)) {
+    smaller[,i] <- as.numeric(smaller[,i]) #make sure size columns are numeric
+  }
+  
+  if (transformAliases == TRUE) {
+    smaller[,1] <- manyAliasToSymbol(gsub(" .*", "", smaller[,1]))
+  }
+  
+  
+  ##PRE-PROCESSING
+  if (activeGeneColNum == 0) {
+    if (length(CRISPRaRef) == 0) {
+      print("Need valid table to declare significant genes")
+    }
+    allEffectsAct <- getGeneEffects(smaller[,1], CRISPRaRef)
+    sigEffectIndices <- (as.numeric(allEffectsAct[,3]) < .1 & as.numeric(allEffectsAct[,2]) > 0) | smaller[,1] %in% addedGenes
+    smallerWithActiveGenes <- cbind(sigEffectIndices, smaller)
+  }
+  else {
+    smallerWithActiveGenes <- cbind(inTable[,activeGeneColNum], smaller)
+  }
+  
+  
+  smallerWithActiveGenes <- cbind(as.character(participantIDs), smallerWithActiveGenes[,2:3], smallerWithActiveGenes[,1],  
+                                  smallerWithActiveGenes[,4:ncol(smallerWithActiveGenes)])
+  
+  colnames(smallerWithActiveGenes) <- c("Participant", "Gene", "Orientation", "sigEffect", timeVars)
+  
+  #if multiple times (or even if not, to be consistent), add a column combining them
+  allTimes <- rowSumsCharacter(as.data.frame(smallerWithActiveGenes[,5:ncol(smallerWithActiveGenes)]))
+  smallerWithActiveGenes <- as.data.frame(cbind(smallerWithActiveGenes[,1:4], allTimes, smallerWithActiveGenes[,5:ncol(smallerWithActiveGenes)]))
+  for (i in 5:ncol(smallerWithActiveGenes)) {
+    smallerWithActiveGenes[,i] <- as.numeric(smallerWithActiveGenes[,i])
+  }
+  colnames(smallerWithActiveGenes) <- c("Participant", "Gene", "Orientation", "sigEffect", "All", timeVars)
+  
+  smallerWithActiveGenes
+  
+}
+
+
+
+mergeParticipantTables <- function(...) {
+
+  tables <- list(...)[[1]]
+
+  collectiveTable <- tables[[1]]
+  
+  if (length(tables) == 1) {
+            print("Only 1 table input")
+
+    return(collectiveTable)
+  }
+  
+  for (i in 2:length(tables)) {
+    
+    currTimeVars <- as.numeric(colnames(collectiveTable)[6:ncol(collectiveTable)])
+    newTimeVars <- as.numeric(colnames(tables[[i]])[6:ncol(tables[[i]])])
+    allTimeVars <- sort(unique(c(currTimeVars, newTimeVars)))
+    
+    priorTable <- collectiveTable
+    collectiveTable <- rbind(priorTable[,1:5], tables[[i]][,1:5])
+    
+    for (j in 1:length(allTimeVars)) {
+      matchingCurr <- which(currTimeVars == allTimeVars[j])
+      matchingNew <- which(newTimeVars == allTimeVars[j])
+      currPart <- rep(0, nrow(priorTable))
+      newPart <- rep(0, nrow(tables[[i]]))
+      
+      if (length(matchingCurr) == 1) {
+        currPart <- priorTable[, 5 + matchingCurr]
+      }
+      if (length(matchingNew) == 1) {
+        newPart <- tables[[i]][, 5 + matchingNew]
+      }
+      
+      collectiveTable <- cbind(collectiveTable, c(currPart, newPart))
+      
+    }
+    
+    colnames(collectiveTable) <- c("Participant", "Gene", "Orientation", "sigEffect", "All", allTimeVars)
+  }
+  
+  collectiveTable
+}
+
+
+manyAliasToSymbol <- function(vec) {
+  out <- rep("", length(vec))
+  for (i in 1:length(vec)) {
+    proposed <- alias2Symbol(vec[i])
+    if (length(proposed) == 0) {
+      out[i] <- vec[i]
+      if(!grepl("pseudo_", vec[i])) {
+        print(vec[i])
+      }
+    }
+    else {
+      out[i] <- proposed[1]
+    }
+    if (out[i] == "MACF1") {
+      print("A mac")
+      print(vec[i])
+    }
+  }
+  out
+}
+
+
+getGeneEffects <- function(geneVec, refTable) {
+  outSizes <- outPs <- numeric(length(geneVec))
+  for (i in 1:length(geneVec)) {
+    rowIndex <- which(refTable[,1] == geneVec[i]) 
+    if (length(rowIndex) == 0) {
+      print(paste("No growth data for ", geneVec[i], sep=""))
+    }
+    else {
+      
+      outSizes[i] <- as.numeric(refTable[rowIndex[1],12])
+      outPs[i] <- as.numeric(refTable[rowIndex[1],11])
+      if (length(rowIndex) > 1) {
+        for (j in 2:length(rowIndex)) { #for some reason there's sometimes multiple sets of guides tested; take one with lowest p
+          if (as.numeric(refTable[rowIndex[j],11]) < outPs[i]) {
+            outSizes[i] <- as.numeric(refTable[rowIndex[j],12])
+            outPs[i] <- as.numeric(refTable[rowIndex[j],11])
+          }
+        }
+      }
+      
+    }
+  }
+  cbind(geneVec, outSizes, outPs)
+}
+
+switchOutGeneEffects <- function(stdTable, CRISPRaRef, addedGenes = NULL, cutoff=.1, CRISPRiRef = NULL) {
+  allEffectsAct <- getGeneEffects(stdTable[,2], CRISPRaRef)
+ 
+  sigEffectIndices <- (as.numeric(allEffectsAct[,3]) < cutoff & as.numeric(allEffectsAct[,2]) > 0) | stdTable[,2] %in% addedGenes
+  if (!is.null(CRISPRiRef)) {
+    allEffectsInh <- getGeneEffects(stdTable[,2], CRISPRaRef)
+      sigEffectIndices <- (as.numeric(allEffectsAct[,3]) < cutoff & as.numeric(allEffectsAct[,2]) > 0) | stdTable[,2] %in% addedGenes | 
+        (as.numeric(allEffectsInh[,3]) < cutoff & as.numeric(allEffectsInh[,2]) < 0)
+  }
+  
+  stdTable[,4] <- sigEffectIndices
+  colnames(stdTable)[4] <- "sigEffect"
+  stdTable
+}
+
+
+```
+
+
+### Statistical tests and binomial proportions
+```{r}
+
+getQuantiles <- function(values,  percentilesToTest = c(0.7310586, 0.8807971, 0.9525741, 0.9820138, 0.9933071), cutoffsToUse = NULL) {
+  if (length(percentilesToTest) > 0) {
+    quantilesPre <- round(quantile(values, percentilesToTest))
+  }
+  else if (length(cutoffsToUse) > 0) {
+    quantilesPre <- cutoffsToUse
+  }
+  else {
+    print("no percentiles nor cutoffs specified")
+    return()
+  }
+    #If two quantiles the same, don't use both
+  quantiles <- unique(quantilesPre)
+  
+  quantileTest <- ecdf(values)
+  percentilesTested <- quantileTest(quantiles)
+  
+  return(list(quantiles = quantiles, percentiles = percentilesTested))
+  
+  
+}
+
+
+performPercentileTest <- function(tausToTest, tabulatedVersion, permutes = 5000) {
+  activeOnlyContrast <- as.data.frame(cbind(c(untabulate(tabulatedVersion[[1]]), untabulate(tabulatedVersion[[2]])), 
+                                            c(rep(1, sum(tabulatedVersion[[1]])), rep(0, sum(tabulatedVersion[[2]])))))
+  colnames(activeOnlyContrast) <- c("Size", "isSense") #first column is size of clone in active gene, second column is 1 if sense, 0 if antisense
+  library(rcompanion)
+  tauPValues <- numeric(length(tausToTest))
+  for (i in 1:length(tausToTest)) {
+    tauPValues[i] <-as.numeric(percentileTest(Size ~ isSense,
+                                              data = activeOnlyContrast,
+                                              test = "percentile",
+                                              tau  = tausToTest[i],
+                                              r    = permutes)$Result[2])
+  }
+  tauPValues
+}
+
+getIthOdds <- function(tabulatedVec) {
+  Odds <- numeric(length(tabulatedVec))
+  for (i in 1:(length(tabulatedVec)-1)) {
+    Odds[i] <- log(sum(tabulatedVec[1:i])/(sum(tabulatedVec)-sum(tabulatedVec[1:i])))
+  }
+  Odds
+}
+
+getExpanded <- function(vec) {
+  for (i in 1:length(vec)) vec[i] = vec[i]*i
+  vec
+}
+
+
+performPolrTest <- function(tabulatedVersion) {
+  activeOnlyContrast <- as.data.frame(cbind(c(untabulate(tabulatedVersion[[1]]), untabulate(tabulatedVersion[[2]])), 
+                                            c(rep(1, sum(tabulatedVersion[[1]])), rep(0, sum(tabulatedVersion[[2]])))))
+  colnames(activeOnlyContrast) <- c("Size", "isSense") #first column is size of clone in active gene, second column is 1 if sense, 0 if antisense
+  
+  activeOnlyContrast[,1] <- as.factor(activeOnlyContrast[,1])
+  if (length(unique(activeOnlyContrast[,1])) < 3) {
+    return(NULL)
+  }
+  
+  a <- polr(formula = Size ~ isSense, data = activeOnlyContrast, Hess = TRUE)
+  ctable <- coef(summary(a))
+  p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
+  c(ctable[1,1:2], p[1])
+}
+
+
+
+getProportionSenseAtCutoffsWithBinomials <- function(tabulatedVersion, cutoffs = NULL, percentilesToTest = NULL, oneSided = FALSE) {
+  if ((length(cutoffs) > 0) ==  (length(percentilesToTest) > 0)) {
+    print("Specify cutoffs OR percentilesToTest")
+    return(list(proportions = c(), binomials=c(), cutoffsUsed = c(), percentilesUsed=c()))
+  }
+  
+  tabulatedVersion <- padVecs(tabulatedVersion)
+  ObsCPlus <- tabulatedVersion[[1]]
+  ObsCMinus <- tabulatedVersion[[2]]
+  fullLength <- length(ObsCPlus)
+  
+  values <- c(untabulate(ObsCPlus), untabulate(ObsCMinus))
+  if (length(values) == 0) {
+    return(list(proportions = c(), binomials=c(), cutoffsUsed = c(), percentilesUsed=c()))
+  }
+  quantileResults <- getQuantiles(values, percentilesToTest=percentilesToTest, cutoffsToUse = cutoffs)
+  cutoffs <- quantileResults[[1]]
+  percentilesUsed <- quantileResults[[2]]
+  
+  
+  
+  if (length(cutoffs) == 0 || fullLength == 0 || sum(ObsCPlus + ObsCMinus) <= 0) {
+    return(list(proportions = c(), binomials=c(), cutoffsUsed = c(), percentilesUsed=c()))
+  }
+  
+  
+  # remove cutoffs that would lead to proportion sense being 0/0
+  highestPossibleCutoff <- max(c(which(ObsCPlus > 0), which(ObsCMinus > 0)))
+  cutoffsToDiscard <- which(cutoffs > highestPossibleCutoff)
+  cutoffsUsed <- cutoffs
+  if (length(cutoffsToDiscard) > 0) {
+    cutoffsUsed <- cutoffs[-cutoffsToDiscard]
+    percentilesUsed <- percentilesUsed[-cutoffsToDiscard]
+  }
+  
+  if (length(cutoffsUsed) == 0) {
+    return(list(proportions = c(), binomials=c(), cutoffsUsed = c(), percentilesUsed=c()))
+  }
+  
+  
+  
+  proportions <- binomials <- lowerCIs <- upperCIs <- Ns <- numeric(length(cutoffsUsed))
+  for (i in 1:length(cutoffsUsed)) {
+    senseNum <- sum(ObsCPlus[cutoffsUsed[i]:fullLength])
+    antiNum <- sum(ObsCMinus[cutoffsUsed[i]:fullLength])
+    proportions[i] <- senseNum/(senseNum + antiNum)
+    tester <- binom.test(senseNum, senseNum + antiNum)
+    binomials[i] <- tester$p.value
+    lowerCIs[i] <- tester$conf.int[1]
+    upperCIs[i] <- tester$conf.int[2]
+    if (oneSided == 1) {
+      tester <- binom.test(senseNum, senseNum + antiNum, alternative = "greater")
+      binomials[i] <- tester$p.value
+      lowerCIs[i] <- tester$conf.int[1]
+      upperCIs[i] <- tester$conf.int[2]
+    }
+    if (oneSided == 2) {
+      tester <- binom.test(senseNum, senseNum + antiNum, alternative = "less")
+      binomials[i] <- tester$p.value
+      lowerCIs[i] <- tester$conf.int[1]
+      upperCIs[i] <- tester$conf.int[2]
+    }
+    
+  }
+  
+  list(proportions = proportions, binomials=binomials, cutoffsUsed = cutoffsUsed, percentilesUsed=percentilesUsed,
+       lowerCIs = lowerCIs, upperCIs = upperCIs)
+}
+
+
+```
+
+
+
+
+### unformattedTable and formattedTable helpers
+
+```{r}
+getUnformattedTable <- function(tabulatedVersion, removeUpToAndIncluding = 2, percentilesToTestTable = NULL) {
+  
+  uncollapsedVersion <- tabulatedToTable(tabulatedVersion, collapse=FALSE)
+  collapsedVersion <- tabulatedToTable(tabulatedVersion, collapse=TRUE)
+  
+  #Make versions of functions with desired cutoff
+  sumGreaterThanXClonesSpecific <- function(sizeVec) {sumGreaterThanXClones(sizeVec, removeUpToAndIncluding)}
+  GetOddsOfExpansionSpecific <- function(sizeVec) {GetOddsOfExpansion(sizeVec, removeUpToAndIncluding)}
+  GetOddsOfClonalitySpecific <- function(sizeVec) {GetOddsOfClonality(sizeVec, removeUpToAndIncluding)}
+  sumGreaterThanXClonesUniquelySpecific <- function(sizeVec) {sumGreaterThanXClonesUniquely(sizeVec, removeUpToAndIncluding)}
+  
+
+  
+  #Get values for table
+  moreThanTwoUniquely <- as.numeric(apply(uncollapsedVersion, 1, sumGreaterThanXClonesUniquelySpecific))
+  moreThanTwoNotUniquely <- as.numeric(apply(uncollapsedVersion, 1, sumGreaterThanXClonesSpecific))
+  expansionOdds <- as.numeric(apply(uncollapsedVersion, 1, GetOddsOfExpansionSpecific))
+  cloneOdds <- as.numeric(apply(uncollapsedVersion, 1, GetOddsOfClonalitySpecific))
+  averageCloneSizes <- as.numeric(apply(uncollapsedVersion, 1, GetAverageCloneSize))
+  simpsonValues <- as.numeric(apply(uncollapsedVersion, 1, GetSimpson2))
+  
+  TablePre <- collapsedVersion[2:5,]
+  rownames(TablePre) <- c("Sense Growth", "Antisense Growth", "Sense Other", "Antisense Other")  
+  outTable <- as.data.frame(cbind(TablePre, moreThanTwoUniquely, moreThanTwoNotUniquely, uncollapsedVersion[,1], 
+                    expansionOdds, cloneOdds, averageCloneSizes, simpsonValues))
+  
+  colnames(outTable) <- c(collapsedVersion[1,], paste(c(">", removeUpToAndIncluding, " Unique"), collapse=""),
+                          paste(c("$\\geq$", removeUpToAndIncluding+1), collapse=""),
+                          "<2", "Odds of Expansion", "Odds of Clone", "Average Clone Size", "Simpson")
+  
+  if (length(percentilesToTestTable) > 0) {
+    priorCols <- ncol(outTable)
+    for (i in 1:length(percentilesToTestTable)) {
+      tabulatedToPercentilesSpecific <- function(sizeVec) {tabulatedToPercentiles(sizeVec = sizeVec, percentilesToTest = percentilesToTestTable[i])}
+      quantileValues <- as.numeric(apply(uncollapsedVersion, 1, tabulatedToPercentilesSpecific))
+      outTable <- as.data.frame(cbind(outTable, quantileValues))
+    }
+    colnames(outTable)[(priorCols+1):ncol(outTable)] <- paste(percentilesToTestTable*100, "%", sep="")
+  }
+  
+  outTable[,-ncol(outTable)]
+}
+
+roundUnformattedTable <- function(unformattedTable, simpsonIndex) {
+  for (i in 1:(ncol(unformattedTable))[-simpsonIndex]) {
+    unformattedTable[,i] <- round(unformattedTable[,i], 2)
+  }
+  unformattedTable[,simpsonIndex] <- 
+    formatC(as.numeric(unformattedTable[,simpsonIndex]), format = "e", digits = 1)
+  unformattedTable
+}
+
+removeCertainUnformattedCols <- function(unformattedTable, keepUnique = TRUE, keepNonUnique = TRUE, keepCloneOdds = TRUE, keepExpOdds = TRUE,
+                                         keepAveCloneSize = TRUE, keepSimpson=TRUE) {
+  
+  if (keepUnique == FALSE) {
+    unformattedTable <- unformattedTable[,-grep("Unique", colnames(unformattedTable))]
+  }
+  if (keepNonUnique == FALSE) {
+    potentialRemovals <- c(grep(">", colnames(unformattedTable)),grep("<", colnames(unformattedTable)),grep("geq", colnames(unformattedTable)))
+    #if (length(potentialRemovals) == 2) {
+    #  potentialRemovals <- potentialRemovals[2]
+    #}
+    unformattedTable <- unformattedTable[,-potentialRemovals]
+  }
+  if (keepCloneOdds == FALSE) {
+    unformattedTable <- unformattedTable[,-grep("Odds of Clone", colnames(unformattedTable))]
+  }
+  if (keepExpOdds == FALSE) {
+    unformattedTable <- unformattedTable[,-grep("Expansion", colnames(unformattedTable))]
+  }
+  if (keepAveCloneSize == FALSE) {
+    unformattedTable <- unformattedTable[,-grep("Size", colnames(unformattedTable))]
+  }
+  if (keepSimpson == FALSE) {
+    unformattedTable <- unformattedTable[,-grep("Simpson", colnames(unformattedTable))]
+  }
+  unformattedTable
+}
+
+getLastNumeric <- function(vec) {
+  for (i in 1:length(vec)) {
+    if(!all(grepl('^(?=.)([+-]?([0-9]*)(\\.([0-9]+))?)$', vec[i], perl = TRUE))) {
+      break
+    }
+  }
+  i-1
+}
+
+
+getFormattedTable <- function(tabulatedVersion, removeUpToAndIncluding = 2,
+                              keepUnique = TRUE, keepNonUnique = TRUE, keepExpOdds = TRUE, keepCloneOdds = FALSE,
+                              keepAveCloneSize = TRUE, keepSimpson=TRUE, percentilesToTestTable = NULL) {
+  
+    
+  unformattedTable <- getUnformattedTable(tabulatedVersion, removeUpToAndIncluding=removeUpToAndIncluding, percentilesToTestTable = percentilesToTestTable)
+  simpsonIndex <- grep("Simpson", colnames(unformattedTable))
+  unformattedTable <- roundUnformattedTable(unformattedTable, simpsonIndex = simpsonIndex)
+
+  
+  readyToFormatTable <- removeCertainUnformattedCols(unformattedTable,keepUnique = keepUnique, keepCloneOdds = keepCloneOdds, keepNonUnique = keepNonUnique, keepExpOdds = keepExpOdds,
+                                                     keepAveCloneSize = keepAveCloneSize, keepSimpson=keepSimpson)
+  readyToFormatTable
+  
+}
+
+
+```
+
+### Making kable pdf's from formatted table
+```{r}
+kableFixColWidths <- function(kableObject, refTable) {
+  for (i in 1:ncol(refTable)) {
+    required <- max(nchar(refTable[,i]))
+    if (i == 1) {
+      kableObject <- kableObject %>% column_spec(i+1, latex_column_spec = "wr{.5em}")
+      next
+    }
+    else if (required %in% c(1,2)) {
+      kableObject <- kableObject %>% column_spec(i+1, latex_column_spec = "wr{.2em}")
+    }
+    else if (required == 3) {
+      kableObject <- kableObject %>% column_spec(i+1, latex_column_spec = "wr{.8em}")
+    }
+    else if (required == 4) {
+      kableObject <- kableObject %>% column_spec(i+1, latex_column_spec = "wr{1em}")
+    }
+    
+    else if (required > 9 && required < 14) {
+      kableObject <- kableObject %>% column_spec(i+1, latex_column_spec = ">{raggedrightarraybackslash}b{3.4em}")
+    }
+    else if (required >= 14) {
+      kableObject <- kableObject %>% column_spec(i+1, latex_column_spec = ">{raggedrightarraybackslash}b{4.7em}")
+    }
+  }
+
+  kableObject
+}
+
+writeKableObjects <- function(kablesList, filepathTex) {
+  toWrite <- c("\\documentclass[12pts]{article}",
+               "\\usepackage{booktabs}","\\usepackage{multirow}","\\usepackage{xcolor}","\\usepackage{colortbl}", "\\usepackage{float}","\\usepackage{array}",
+               "\\usepackage{graphicx}","\\usepackage[T1]{fontenc}","\\usepackage[margin=0.5in]{geometry}","\\usepackage{ltablex}","\\usepackage{ragged2e}",
+               "\\begin{document}", "\\sffamily")
+  for (i in 1:length(kablesList)) {
+    filename <- tempfile(fileext = ".tex")
+    capture.output(kablesList[[i]], file = filename)
+    latexLines <- readLines(filename)
+    potentiallyToFix <- grep("raggedrightarray", latexLines)
+    if (length(potentiallyToFix) == 1) {
+      latexLines[potentiallyToFix] <- gsub("raggedrightarraybackslash", "\\\\raggedleft\\\\arraybackslash", latexLines[potentiallyToFix])
+    }
+    toWrite <- c(toWrite, latexLines)
+ #   print(latexLines)
+  }
+  #print(toWrite)
+  writeLines(c(toWrite, "\\end{document}"), con=filepathTex)
+  tools::texi2pdf(filepathTex)
+}
+
+outputNiceTable <- function(readyToFormat, filepathTex, caption = "", colsToSplit = NULL, outputPath = "") {
+  
+  lastNumericCol <- getLastNumeric(colnames(readyToFormat))
+  if (lastNumericCol == 0) {
+    print("ERROR: No numeric cols")
+    return(1)
+  }
+  
+  if (length(colsToSplit) == 1 && colsToSplit == "auto") {
+    if (ncol(readyToFormat) < 60) {
+      colsToSplit <- NULL
+    }
+    else {
+      colsToSplit <- round(ncol(readyToFormat)/2 + 8)
+    }
+  }
+  #setwd(outputPath)
+  
+  withoutColNames <- rbind(colnames(readyToFormat), readyToFormat)
+  colnames(withoutColNames) <- NULL
+  rownames(withoutColNames)[1] <- ""
+  withoutColNames = as.matrix(withoutColNames)
+  rownames(withoutColNames) = c("", "Sense", "Anti", "Sense", "Anti")
+  
+  if (length(colsToSplit) == 0) {
+    usedKables <- kable(withoutColNames, format="latex", booktabs=T, align="r", escape=F) %>%
+      kable_styling(latex_options=c("scale_down"), full_width = F, position ="left") %>% 
+      add_header_above(c("Category", "Unique clones of each size" = lastNumericCol,
+                         "Clone statistics" = ncol(withoutColNames)-lastNumericCol))  #%>% save_kable("~/Downloads/why.pdf")
+    
+    kableObjects <- list(kableFixColWidths(usedKables, withoutColNames))
+
+    
+  }
+  
+  else {
+    if (suppressWarnings(max(colsToSplit) > ncol(readyToFormat) || colsToSplit == 1)) {
+      print("ERROR: colsToSplit are the first column of sucessive tables")
+      return(1)
+    }
+    colsToSplit <- sort(colsToSplit)
+    colsToSplit <- c(colsToSplit, ncol(withoutColNames))
+    if (!(1 %in% colsToSplit)) {
+      colsToSplit <- c(1, colsToSplit)
+    }
+    
+    kableObjects <- list()
+    for (i in 1:(length(colsToSplit)-1)) {
+      relevantCols <- c((colsToSplit[i]+1):colsToSplit[i+1])
+      if (2 %in% relevantCols) {
+        relevantCols <- c(1, relevantCols)
+      }
+      splitTable <- withoutColNames[,relevantCols]
+      
+      sizeCols <- 1:(lastNumericCol)
+      sizesNumCols <- length(intersect(relevantCols, sizeCols))
+      statsCols <- (lastNumericCol + 1):ncol(withoutColNames)
+      statsNumCols <- length(intersect(relevantCols, statsCols))
+      headerVec <- c("Category", "Observed clones" = sizesNumCols, "Clone statistics"= statsNumCols)
+      if (length(which(headerVec < 1))> 0) {
+        headerVec <- headerVec[-which(headerVec < 1)]
+      }
+      
+      if (i == 1) {
+        kablePre <- kable(splitTable, format="latex", booktabs=T, align="r", caption=caption, escape=F) %>%
+          kable_styling(full_width = F, position ="left",latex_options=c("scale_down")) %>% 
+          add_header_above(headerVec) 
+      }
+      else {
+        kablePre <- kable(splitTable, format="latex", booktabs=T, align="r", escape=F) %>%
+          kable_styling(full_width = F, position ="left", latex_options=c("scale_down")) %>% 
+          add_header_above(headerVec) 
+      }
+      
+      
+      kableObjects[[i]] <- kableFixColWidths(kablePre, splitTable)
+    }
+  }
+  
+  writeKableObjects(kableObjects, filepathTex)
+} 
+
+```
+
+### One-off plots: Stacked Histogram, plot proportions, etc.
+
+```{r}
+
+
+convertPsToStars <- function(pVec) {
+  if (length(pVec) == 0) {
+    return(NULL)
+  }
+  outVec <- rep("", length(pVec))
+  outVec[pVec <= .05] <- "*"
+  outVec[pVec <= .01] <- "**"
+  outVec[pVec <= .001] <- "***"
+  outVec
+}
+
+plotProportions <- function(proportions, binomials, cutoffs, sampleName = "", percentileTestPs = NULL, filepath = "", polrOutput = NULL, plotAntisense = FALSE) {
+  
+  if (length(percentileTestPs) != 0 && length(percentileTestPs) != length(binomials)) {
+    print("percentileTestPs must be either NULL (as by default) or equal in length to proportions")
+    return(1)
+  }
+  if (length(binomials) != length(proportions)) {
+    print("binomials and proportions must be same length")
+    return(1)
+  }
+  
+  binomialStars <- convertPsToStars(binomials)
+  if (length(percentileTestPs) != 0) {
+    percentileStars <- convertPsToStars(percentileTestPs)
+  }
+  graphTitle <- paste(c(sampleName, ": Proportion sense in Effective Genes"), collapse="")
+  barColor <- "#a1d999ff"
+  if (plotAntisense) {
+    graphTitle <- paste(c(sampleName, ": Proportion antisense in Effective Genes"), collapse="")
+    proportions <- 1 - proportions
+    barColor <- "#6baed6ff"
+  }
+ 
+  barplot(proportions ~ cutoffs, cex.main=2, cex.lab = 1.5,cex.axis = 1.5, cex.names = 1.5, ylim=c(0,1.1), col=barColor, xlab = "Cumulative Clone Size Cutoff", ylab = "Proportion Sense", main = graphTitle)
+  abline(.5,0, col="#0097a8", lty="dotted", lwd=10) #Mark OR of 1.
+  for (i in 1:length(cutoffs)) {
+    text(x=(-.5 + i*1.2),y=proportions[i],binomialStars[i] ,adj = c(.5, .38),cex=3.5, col=ifelse(plotAntisense, "#4292c6ff", "#3a8232ff"))
+    if (length(percentileTestPs) > 0) {
+      text(x=(-.5 + i*1.2),y=proportions[i],percentileStars[i],adj = c(.5, -.12),cex=3.5, col="purple")
+    }
+  }
+  if (!is.null(polrOutput)) {
+    text(x = 1, y = .9, labels = paste(c("polr coeff: ", format(round(polrOutput[1], 2), nsmall=2)), collapse=""))
+    text(x = 1, y = .85, labels = paste(c("p = ", signif(polrOutput[3], 2)), collapse=""))
+
+  }
+  p <- recordPlot()
+  plot.new()
+  
+  if (filepath == "") {
+    print(p)
+  }
+  else {
+    pdf(filepath)
+    print(p)
+    dev.off()
+  }
+  
+}
+
+
+makeStackedHistogram <- function(tabulatedVersion, filepath="", collapseTo = 6, graphTitle = "") {
+  
+  tableVersion <- tabulatedToTable(tabulatedVersion, collapse = FALSE)
+  collapseToXSpecific <- function(sizeVec) {collapseToX(sizeVec, X=collapseTo)}
+  Totals <- collapseToXSpecific(colSums(tableVersion))
+  Totals[Totals == 0] <- 1
+  collapsedToXTable <- apply(tableVersion, 1, collapseToXSpecific)
+  
+  
+  CSenseFrac <- x <-collapsedToXTable[,1]/Totals #Cancer sense fraction
+  CAntiFrac <- aa <- collapseToX(tableVersion[2,], X=collapseTo)/Totals #Cancer antisense fraction
+  NSenseFrac <- y <- collapseToX(tableVersion[3,], X=collapseTo)/Totals #Non-cancer sense fraction
+  NAntiFrac <- z <- collapseToX(tableVersion[4,], X=collapseTo)/Totals #Non-cancer antisense fraction
+  
+
+  fracsTogether <- 100*(collapsedToXTable/Totals)[,c(1,3,4,2)]
+  
+  heightsCAnti <- rep(100, collapseTo)
+  heightsNAnti <- rowSums(fracsTogether[,1:3])
+  heightsNSense <- rowSums(fracsTogether[,1:2])
+  heightsCSense <- (fracsTogether[,1])
+  collapsedToXTable[collapsedToXTable == 0] <- ""
+  
+  
+  #Plot Figure 2E
+  a <- barplot(fracsTogether ~ c(1:collapseTo), data=fracsTogether,col=c("#E5F5E0","#A1D99B","#4292C6","#6BAED6"), border = "black", ylab = "", xlab = "", cex.names=3, cex=3, main=graphTitle)
+  text(x = a, y = heightsCAnti, label = collapsedToXTable[,2], pos=1, cex = 3, col= "black")
+  text(x = a, y = heightsNAnti, label = collapsedToXTable[,4], pos = 1, cex = 3, col = "black")
+  text(x = a, y = heightsNSense, label = collapsedToXTable[,3], pos = 1, cex = 3, col = "black")
+  text(x = a, y = heightsCSense, label = collapsedToXTable[,1], adj=c(.5,.3), cex = 3, col = "black")
+  p <- recordPlot()
+  plot.new()
+  
+  if (filepath != "") {
+    pdf(file=filepath)
+    print(p)
+    dev.off()
+  }
+  
+}
+
+```
+
+### Combined function
+
+```{r}
+
+
+everythingOut <- doEverything(bigTable,  participantSets[[i]], autoNameWithDirectory = directoryToUse, participantIDs = participantSets[[i]], plotAntisense = plotAntisense,
+                         percentilesToTest = NULL, cutoffs=c(1,2,4,6,8), colsToSplit = "auto", keepUnique = FALSE, keepSimpson = FALSE, doTaus = FALSE, oneSided = oneSided, keepCloneOdds = FALSE, keepNonUnique = FALSE)
+
+doEverything <- function(inTable,  sampleName, proportionFileName = "", 
+                         participantIDs = NULL, timeEvaluationFunc = defaultAllTimeEvaluation,
+                         percentilesToTest = NULL,
+                         cutoffs = NULL,
+                         removeUpToAndIncluding = 1, 
+                         stackedHistogramFileName = "",stackedHistogramCollapseTo=5,
+                         formattedTableCaption = "", formattedTableFile = NULL, colsToSplit = NULL,
+                         keepUnique = TRUE, keepNonUnique = TRUE, keepExpOdds = TRUE,
+                         keepAveCloneSize = TRUE, keepSimpson=TRUE, keepCloneOdds = FALSE,
+                         autoNameWithDirectory = NULL, doTaus = TRUE, percentilesInTable = c(.95), plotAntisense = FALSE, oneSided = FALSE) {
+  
+  tabulatedVersion <- tabulateParticipant(inTable, participantIDs = participantIDs, timeEvaluationFunc = timeEvaluationFunc)
+
+  
+  if (length(autoNameWithDirectory) == 1) {
+    setwd(autoNameWithDirectory)
+    proportionFileName <- paste(c(sampleName, "Proportions.pdf"), collapse="")
+    stackedHistogramFileName <- paste(c(sampleName, "StackedHistogram.pdf"), collapse="")
+    formattedTableFile <- paste(c(sampleName, "Table.pdf"), collapse="")
+    formattedTableCaption <- paste(c(sampleName, "Clone Sizes"), collapse=" ")
+  }
+
+  ### Get proportions sense and binomial p-values
+  proportionSenseOutput <- getProportionSenseAtCutoffsWithBinomials(tabulatedVersion, percentilesToTest = percentilesToTest, cutoffs = cutoffs, oneSided = oneSided) # cutoffs vs cutoffs to test error in naming.
+
+  
+  #### Perform Percentile Tests
+  
+  tauPValues <- if (doTaus) performPercentileTest(proportionSenseOutput$percentilesUsed, tabulatedVersion) else rep(1.1, length(percentilesToTest))
+  
+  ### Perform polr test
+  polrOutput <- performPolrTest(tabulatedVersion)
+  
+  ### MakeOutputTable
+  unformattedTable <- getUnformattedTable(tabulatedVersion, removeUpToAndIncluding, percentilesToTestTable = percentilesInTable)
+  formattedTable <- getFormattedTable(tabulatedVersion, removeUpToAndIncluding = removeUpToAndIncluding,
+                                                  keepUnique = keepUnique, keepCloneOdds = keepCloneOdds, keepNonUnique = keepNonUnique, keepExpOdds = keepExpOdds,
+                                                  keepAveCloneSize = keepAveCloneSize, keepSimpson=keepSimpson, percentilesToTestTable = percentilesInTable) 
+  
+  ### If saving a formatted table is desired
+  if (length(formattedTableFile) == 1) {
+    outputNiceTable(formattedTable, filepathTex = gsub(".pdf$", ".tex", formattedTableFile), caption = formattedTableCaption, colsToSplit = NULL, outputPath = autoNameWithDirectory) 
+    write.csv(formattedTable, gsub(".pdf$", ".csv", formattedTableFile))
+      
+  }
+  
+  ### Plot the proportions
+  plotProportions(proportionSenseOutput$proportions, proportionSenseOutput$binomials, 
+                  proportionSenseOutput$cutoffsUsed, sampleName = sampleName, filepath = proportionFileName, polrOutput = polrOutput, plotAntisense = plotAntisense) 
+  
+  ### Make the stacked histogram
+  
+  makeStackedHistogram(tabulatedVersion, filepath=stackedHistogramFileName, collapseTo = stackedHistogramCollapseTo, graphTitle = sampleName) 
+    
+  list(tabulatedVersion, tauPValues, polrOutput, formattedTable, proportionSenseOutput)
+  
+}
+
+
+
+
+```
+
+
+
