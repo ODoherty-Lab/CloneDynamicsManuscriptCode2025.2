@@ -89,14 +89,15 @@ getMultiTestMorisitaPVals <- function(object1, object2, year1, year2, year1b = N
 
 # for a proviral or TCR simple object (and full matrix if TCR), makes a row-panel with overlap venn diagram (optional), morisita venn diagram, and permutation histogram
 # Input the full TCR table to make it a TCR permutation histogram. 
-makeVennPanel <- function(simpleObject, year1, year2, nSims, doOverlap = T, TCRFullTable = NULL, participantName, xLims = c(0, 0.7), yLims = c(0, 4000), lwd1 = 2, lwd2 = 2, col1=col1, col2=col2, col3=col3) {
+makeVennPanel <- function(simpleObject, year1, year2, nSims, doOverlap = T, TCRFullTable = NULL, participantName, xLims = c(0, 0.7), yLims = c(0, 4000), lwd1 = 2, lwd2 = 2) {
   
   row1 = which(simpleObject$newTimes == year1)
   row2 = which(simpleObject$newTimes == year2)
-  
+
   par(mfrow = c(1,3))
   if (!doOverlap) par(mfrow = c(1,2))
-  if(doOverlap) MakeVenn(simpleObject$simpleTable, row1,row2,UseNumOverlap = TRUE, col1,col2,col3, Alpha = 1) # colors defined in helper file, 6 and 7 are rows of the two 8.9 timepoints.
+  if(doOverlap) MakeVenn(simpleObject$simpleTable, row1,row2,UseNumOverlap = TRUE, Col1=col1,Col2=col2,Col3=col3, Alpha = 1) # colors defined in helper file, 6 and 7 are rows of the two 8.9 timepoints.
+ 
   MakeVenn(simpleObject$simpleTable, row1,row2,UseNumOverlap = FALSE, col1,col2,col3, Alpha = 1) # useNumOVerlap = FALSE tells it to use Morisita
   
   if (is.null(TCRFullTable)) {
@@ -216,8 +217,8 @@ MakeVenn <- function(ClonesArray, ClonesRow1, ClonesRow2, UseNumOverlap, Col1,Co
   
   #grid.rect(gp = gpar(fill = NA, lwd = 2))
   #plot(euler(list1), quantities=list(fontsize=18), fills = c(alpha("#440154ff",0.3), alpha('#21908dff',0.3), alpha('#fde725ff',0.3)),main = paste(c(rownames(ClonesArray)[ClonesRow1], "and",rownames(ClonesArray)[ClonesRow2]), collapse=" "))
-  g <- plot(euler(list1), draw = FALSE, lwd=0, border="green",quantities=list(fontsize=18), fills = c(alpha(Col1,Alpha), alpha(Col2,Alpha), alpha(Col3,Alpha)),main = paste(c(rownames(ClonesArray)[ClonesRow1], "and",rownames(ClonesArray)[ClonesRow2]), collapse=" "))
-  grid.draw(g) 
+  g <- plot(euler(list1), draw = FALSE, lwd=0, border="green",quantities=list(fontsize=18), fills = c(alpha(colour=Col1,alpha=Alpha), scales::alpha(colour=Col2,alpha=Alpha), scales::alpha(colour=Col3,alpha=Alpha)),main = paste(c(rownames(ClonesArray)[ClonesRow1], "and",rownames(ClonesArray)[ClonesRow2]), collapse=" "))
+  grid.draw(g)
 }
 
 
