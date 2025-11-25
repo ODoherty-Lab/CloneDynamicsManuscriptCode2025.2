@@ -7,16 +7,11 @@ library(nleqslv)
 library(tidyr)
 library(exact2x2)
 # takes a numeric vectors of rows of a featureCounts file, and a column integer >= 7 referring to the index of the sample of interest.
-# then sums the hits to all these annotations
-# turns 0 into 0.5
+# then sums the hits to all these annotations and divides by 
+# turns 0 reads into 0.5 reads
 getCombinedExpression <- function(featureCountsPart, column) {
-  #totalsPerBP <- numeric(nrow(featureCountsPart))
-  #for (i in 1:nrow(featureCountsPart)) {
-  #  row <- featureCountsPart[i,]
-  #  totalsPerBP[i] <- as.numeric(row[column])/as.numeric(row[6])
-  #} # the problem with this is small exons are noisy and contribute unduly.
-  retVal <- sum(as.numeric(featureCountsPart[,column])) 
-  if (retVal == 0) retVal = 0.5
+  retVal <- sum(as.numeric(featureCountsPart[,column]))/sum(as.numeric(featureCountsPart[,6]))
+  if (retVal == 0) retVal = 0.5/sum(as.numeric(featureCountsPart[,6]))
   retVal
 } 
 
