@@ -47,6 +47,7 @@ totalMappedReads <- siteData$`Number of mapped reads`
 # write.csv(concatenatedGeneFeatureCounts, paste0(pathToSuppData, "/RNASeqProcessed/concatenatedGeneFeatureCounts.csv"))
 
 #### RUN THIS INSTEAD IF YOU"RE WORKING FROM GITHUB AND DON'T DOWNLOAD ALL THE INDIVIDUAL FILES
+# sometimes just in the pathToSuppData without the RNASeqProcessed folder.
 concatenatedExonFeatureCounts <- read.csv(paste0(pathToSuppData, "/RNASeqProcessed/concatenatedExonFeatureCounts.csv"))[,-1]
 concatenatedGeneFeatureCounts <- read.csv(paste0(pathToSuppData, "/RNASeqProcessed/concatenatedGeneFeatureCounts.csv"))[,-1]
 
@@ -141,15 +142,15 @@ colnames(heatmapPre) <- colnames(heatmapPost) <- heatmapPre[1,]
 
 MappedTranscriptLevels <- as.numeric(heatmapPre[-1,42])
 
-heatmapPreTPM <- apply(heatmapPre[-1, -1], 2, function(x) {1E6*as.numeric(x)/MappedTranscriptLevels})
-heatmapPostTPM <- apply(heatmapPost[-1, -1], 2, function(x) {1E6*as.numeric(x)/MappedTranscriptLevels})
-heatmapHIVTPM <- apply(heatmapHIV[-1, -1], 2, function(x) {1E6*as.numeric(x)/MappedTranscriptLevels})
+heatmapPreTPM <- apply(heatmapPre[-1, -1], 2, function(x) {as.numeric(x)/MappedTranscriptLevels})
+heatmapPostTPM <- apply(heatmapPost[-1, -1], 2, function(x) {as.numeric(x)/MappedTranscriptLevels})
+heatmapHIVTPM <- apply(heatmapHIV[-1, -1], 2, function(x) {as.numeric(x)/MappedTranscriptLevels})
 
 
 
-heatmapPreLogTPM <- apply(heatmapPre[-1, -1], 2, function(x) {log(1E6*as.numeric(x)/MappedTranscriptLevels)})
-heatmapPostLogTPM <- apply(heatmapPost[-1, -1], 2, function(x) {log(1E6*as.numeric(x)/MappedTranscriptLevels)})
-heatmapHIVLogTPM <- apply(heatmapHIV[-1, -1], 2, function(x) {log(1E6*as.numeric(x)/MappedTranscriptLevels)})
+heatmapPreLogTPM <- apply(heatmapPre[-1, -1], 2, function(x) {log(as.numeric(x)/MappedTranscriptLevels)})
+heatmapPostLogTPM <- apply(heatmapPost[-1, -1], 2, function(x) {log(as.numeric(x)/MappedTranscriptLevels)})
+heatmapHIVLogTPM <- apply(heatmapHIV[-1, -1], 2, function(x) {log(as.numeric(x)/MappedTranscriptLevels)})
 rownames(heatmapPreLogTPM) <- rownames(heatmapPostLogTPM) <- rownames(heatmapHIVLogTPM) <- rownames(heatmapPre)[-1]
 colnames(heatmapPreLogTPM) <- colnames(heatmapPostLogTPM) <- colnames(heatmapPre)[-1]
 colnames(heatmapHIVLogTPM) <- c("Nef", "Total")
@@ -164,26 +165,46 @@ heatmapHIVLogTPMAveraged <- averageRows(heatmapHIVLogTPM, removeCols = FALSE, du
 
 heatmapPreLogTPMStandardized <- standardizeExpression(heatmapPreLogTPM[,-c(41,42)], heatmapPreLogTPMAveraged[,-c(29,30)])
 heatmapPostLogTPMStandardized <- standardizeExpression(heatmapPostLogTPM[,-c(41,42)], heatmapPostLogTPMAveraged[,-c(29,30)])
-heatmapHIVLogTPMStandardized <- standardizeExpression(heatmapHIVLogTPM, heatmapHIVLogTPMAveraged)
+heatmapHIVLogTPMStandardized <- standardizeExpression(heatmapHIVLogTPM, heatmapHIVLogTPMAveraged, notHIV=F)
 
 
 saveHeatmaps(heatmapPreLogTPMStandardized, heatmapPostLogTPMStandardized, heatmapHIVLogTPMStandardized,
-             paste0(base, "/InVitroDataAndFigures/Figures/"), "Clone Expression, Normalized by TPM and Gene Expression")
+             paste0(base, "/InVitroDataAndFigures/Figures/"), "Clone Expression BP-Averaged Exons, Normalized by TPM and Gene Expression")
 
 
 ```
 
-Make the formal supplementary data
+Make the formal supplementary data and some numbers used in paper
 ```{r}
 
+# note that in the supplement we use the read counts before dividing by exon lengths. 
 tablesToWriteList <- list()
 tablesToWriteList[[1]] <- heatmapPre
 tablesToWriteList[[2]] <- heatmapPost
 tablesToWriteList[[3]] <- heatmapHIV
 names(tablesToWriteList) <- c("Pre read counts", "Post read counts", "HIV Read Counts")
-write.xlsx(tablesToWriteList, paste0(pathToSuppData, "/preSuppData6.xlsx"),rowNames=TRUE)
+write.xlsx(tablesToWriteList, paste0(pathToSuppData, "/preSuppData6PerBP.xlsx"),rowNames=TRUE)
 
 
+fastI <- c(1:3,9:14) # indices of fast/slow/sense/antisense clones among the unique sites (averages replicates) in heatmapPostLogTPMAveraged
+slowI <- c(4:8, 15:28)
+senseI <- 9:28
+antisenseI <- 1:8
+
+
+senseDiagonal <- diag(heatmapPostLogTPMAveraged[senseI,senseI])
+median(exp(senseDiagonal)/colMeans(exp(heatmapPostLogTPMAveraged[,senseI]))) #8.2. Also note 17/20 clones > 1, which is significant by binomial test (p = .003)
+
+antisenseDiagonal <- diag(heatmapPostLogTPMAveraged[antisenseI,antisenseI])
+median(exp(antisenseDiagonal)/colMeans(exp(heatmapPostLogTPMAveraged[,antisenseI]))) # 1.1. Also note 6/8 clones > 1, which is not significant by binomial test (p = 0.3). 
+
+# Direct comparison of downstream expression (not scaled to be z scores)
+wilcox.test(senseDiagonal, antisenseDiagonal)
+
+# looking at HIV expression
+HIVExpression <- heatmapHIVLogTPMAveraged[,2]
+wilcox.test(HIVExpression[1:3], HIVExpression[9:14], alternative = "less")
+barnard.test(4,0,2,3)
 ```
 
 
@@ -218,6 +239,7 @@ dev.off()
 
 
 wilcox.test(pull(SpliceLevels[SpliceLevels$Class == "Sense",],Amount), pull(SpliceLevels[SpliceLevels$Class == "Antisense/Intergenic",],Amount))
+
 
 
 
