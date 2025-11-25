@@ -22,7 +22,7 @@ CT2ObjectWMultiples = readRDS(paste0(base, "/MorisitaDataAndFigures/RDSObjects/C
 
 
 ##### SETS NUMBER OF PERMUTATIONS SHOWN IN EACH HISTOGRAM; SET TO 10,000 FOR MANUSCRIPT
-histogramSims = 1000
+histogramSims = 10
 
 
 
