@@ -10,7 +10,7 @@ output: html_document
 Process our own integration site data provided by Bushman et al., converting first one to T2T coordinates to match second.
 ```{r}
 
-base = paste0(here::here(), "/Downloads/RODohertyPaper")
+base = here::here()
 
 source(paste0(base, "/IntegrationSiteDataAndFigures/HelperFunctions/ProcessBushmanData.R"))
 source(paste0(base, "/IntegrationSiteDataAndFigures/HelperFunctions/ProcessGuoDataAndMakeInTable.R"))
