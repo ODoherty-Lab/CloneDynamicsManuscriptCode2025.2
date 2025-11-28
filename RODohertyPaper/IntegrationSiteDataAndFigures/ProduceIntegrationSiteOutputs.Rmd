@@ -7,57 +7,39 @@ output: html_document
 
 ```{r}
 
-library(Barnard)
+base = here::here() # may need to modify depending where you open.
 
-base = paste0(here::here(), "/Downloads/RODohertyPaper") # may need to modify depending where you open.
+source(paste0(base, "/IntegrationSiteDataAndFigures/HelperFunctions/AllAtOnceFunctions.R"))
+source(paste0(base, "/IntegrationSiteDataAndFigures/HelperFunctions/BinomialProportionsFunctions.R"))
+source(paste0(base, "/IntegrationSiteDataAndFigures/HelperFunctions/FilteringinTableToTabulatedVersion.R"))
+source(paste0(base, "/IntegrationSiteDataAndFigures/HelperFunctions/PlotProportionsAndHistogram.R"))
+source(paste0(base, "/IntegrationSiteDataAndFigures/HelperFunctions/TableFormating.R"))
 
-source(knitr::purl(paste0(base, "/IntegrationSiteDataAndFigures/HelperFunctions/FinalFig3AnalysisScripts.Rmd"), quiet=TRUE))
+library(MASS)
+
 
 pathToSuppData <- paste0(base, "/IntegrationSiteDataAndFigures/SuppData/")
 
 growthTable <- data.frame(readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 2-UsedIntegrationSitesAndGenes.xlsx"), sheet = "Integration Site Table"))
 colnames(growthTable) <- growthTable[1,]
-growthTable <- growthTable[-1,-5]
-growthGenes <- as.character(data.frame(readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 2-UsedIntegrationSitesAndGenes.xlsx"), sheet = "Growth Genes"))[,1])
-expressedGenes <- as.character(data.frame(readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 2-UsedIntegrationSitesAndGenes.xlsx"), sheet = "Highly-Expressed Genes"))[,1])
-expressedGenes <- expressedGenes[-which(expressedGenes %in% growthGenes)]
+growthTable = growthTable[-1,]
 
-for (i in 5:ncol(growthTable)) {
+for (i in 6:ncol(growthTable)) {
   growthTable[,i] <- as.numeric(growthTable[,i])
 }
 
-
-growthTable[,4] <- growthTable[,2] %in% growthGenes
 expressedTable <- growthTable
-expressedTable[,4] <- expressedTable[,2] %in% expressedGenes
+growthTable <- growthTable[,-5]
+expressedTable <- expressedTable[,-4]
 
 
 
 
 participantSets <- list(c("F07","C03","R09"),c("CT1","CT2","CT3","CT8","CT9"))
 
+library(MASS)
 
-
-doEverythingForIDSet <- function(bigTable, directoryToUse, plotAntisense = FALSE,oneSided = 1, ...) { 
-  participantSets <- list(...)[[1]]
-  outputRegressions <- list()
-  outputCIs <- list()
-  dir.create(directoryToUse, showWarnings = FALSE)
-  for (i in 1:length(participantSets)) {
-    
-    everythingOut <- doEverything(bigTable,  participantSets[[i]], autoNameWithDirectory = directoryToUse, participantIDs = participantSets[[i]], plotAntisense = plotAntisense,
-                         percentilesToTest = NULL, cutoffs=c(1,2,4,6,8), colsToSplit = "auto", keepUnique = FALSE, keepSimpson = FALSE, doTaus = FALSE, oneSided = oneSided, keepCloneOdds = FALSE, keepNonUnique = FALSE)
-     outputRegressions[[i]] <- everythingOut[[3]]
-     outputCIs[[i]] <- everythingOut[[5]]
-  }
-  outputCIs
-}
-
-
-
-#Copy and paste into terminal; they don't like running the PDF building scripts as part of RMD block.
-
-doEverythingForIDSet(growthTable, paste0(pathToSuppData, "/Growth Table/"), participantSets, plotAntisense = FALSE, oneSided = 1)
+doEverythingForIDSet(growthRelatedTable, paste0(pathToSuppData, "/Growth Table/"), participantSets, plotAntisense = FALSE, oneSided = 1)
 
 doEverythingForIDSet(expressedTable, paste0(pathToSuppData, "/Expressive Table/"), participantSets, plotAntisense = FALSE, oneSided = 2)
 
