@@ -26,7 +26,7 @@ RDSFromSuppData5 <- function(pathToSuppData, outFolderPath, verbose = T) {
   
   provirusObjects <- list()
   
-  # takes each sheet of the supp data, and turns it into a simple object in a TCR simple object list, named by participant
+  # takes each sheet of the supp data, and turns it into a simple object in a simple object list, named by participant
   for (sheet in sheets) {
     if (verbose) print(paste0("working on sheet ", sheet))
     readSheet <- readAndCleanSuppData5(pathToSuppData, sheet = sheet)
@@ -44,8 +44,8 @@ RDSFromSuppData5 <- function(pathToSuppData, outFolderPath, verbose = T) {
 # making sure reading in doubles of col names didn't mess them up
 # if countMults, keeps s1 and s2 separate. If not, merges them. 
 readAndCleanSuppData5 <- function(pathToSuppData, sheet, countMults = FALSE) {
-  readSheet <- makeNumeric(readxl::read_xlsx(pathToSuppData, sheet = sheet))
-  colnames(readSheet) <- unlist(lapply(strsplit(colnames(readSheet), "s"), function(x){x[1]}))
+  readSheet <- makeNumeric(readxl::read_xlsx(pathToSuppData, sheet = sheet, skip = 1))
+  colnames(readSheet) <- unlist(lapply(strsplit(colnames(readSheet), " S"), function(x){x[1]}))
   colnames(readSheet) <- round(as.numeric(colnames(readSheet)), 5) # read_xlsx apparently has bad double handling and is adding noise.
   
   if (!countMults) {
@@ -78,7 +78,15 @@ RDSFromSuppData4  <- function(pathToSuppData, outFolderPath, verbose = T) {
   # takes each sheet of the supp data, and turns it into a simple object in a TCR simple object list, named by participant
   for (sheet in sheets) {
     if (verbose) print(paste0("working on sheet ", sheet))
-    TCRFullTables[[sheet]] <- readxl::read_xlsx(pathToSuppData, sheet = sheet)
+    input = readxl::read_xlsx(pathToSuppData, sheet = sheet)
+    
+    # some column names were spelled out for supp data that aren't in the originally processed versions; change col names back
+    colnames(input)[1] = "TCRbeta" 
+    # replace -Total Reads with -AllCount and -Number of Positive Reps" with "-NumPositiveReps"
+    colnames(input)[grep("Total Reads", colnames(input))] <- paste(paste0(lapply(strsplit(colnames(input)[grep("Total Reads", colnames(input))], "-"), function(x){x[1]})), "AllCount", sep="-")
+    colnames(input)[grep("Number of Posi", colnames(input))] <- paste(paste0(lapply(strsplit(colnames(input)[grep("Number of Posi", colnames(input))], "-"), function(x){x[1]})), "NumPositiveReps", sep="-")
+    
+    TCRFullTables[[sheet]] <- input
     TCRs[[sheet]] <- SuppTCRSheetToSimpleObject(readSheet = TCRFullTables[[sheet]]) 
   } 
   
