@@ -8,9 +8,12 @@ output: html_document
 
 Set paths, load in files required and helping code.
 ```{r}
+
+# be sure to unzip concatenatedExonFeatureCounts.csv.zip in supp data rna seq files folder.
+
 library(Barnard)
 
-base = paste0(here::here(), "/Downloads/RODohertyPaper") # may need to modify depending where you open.
+base = here::here() # may need to modify depending where you open.
 
 source(paste0(base, "/InVitroDataAndFigures/HelpingFunctions/ProcessingInputInVitroData.R"))
 source(paste0(base, "/InVitroDataAndFigures/HelpingFunctions/organizeHeatmapData.R"))
@@ -34,12 +37,13 @@ Note the concatenated files are in Github; individual too large to upload to git
 ```{r}
 
 #Don't include lncRNA, unknown sites, intergenics,  and the sample with integration in both Pirin/BMX, as we exclude when in multiple genes in opposite orientations.
+
 indicesNotForHeatmap <- c(grep("UNK", siteData$Name), grep("lncRNA", siteData$Name), grep("INTER", siteData$Name), grep("PIR", siteData$Name), which(is.na(siteData$Name))) 
 siteDataUsed <- siteData[-indicesNotForHeatmap,]
 
 sampleNames <- siteDataUsed$Name
-concatenatedExonFeatureCounts <- concatenateProcessedFilesBySampleNames(paste0(pathToSuppData, "RNASeqProcessed"), sampleNames, nameMatch, "exon.txt") # takes a minute or so.
-concatenatedGeneFeatureCounts <- concatenateProcessedFilesBySampleNames(paste0(pathToSuppData, "RNASeqProcessed"), sampleNames, nameMatch, "gene.txt") # faster
+#concatenatedExonFeatureCounts <- concatenateProcessedFilesBySampleNames(paste0(pathToSuppData, "RNASeqProcessed"), sampleNames, nameMatch, "exon.txt") # takes a minute or so.
+#concatenatedGeneFeatureCounts <- concatenateProcessedFilesBySampleNames(paste0(pathToSuppData, "RNASeqProcessed"), sampleNames, nameMatch, "gene.txt") # faster
 totalMappedReads <- siteData$`Number of mapped reads`
 
 
@@ -48,7 +52,7 @@ totalMappedReads <- siteData$`Number of mapped reads`
 
 #### RUN THIS INSTEAD IF YOU"RE WORKING FROM GITHUB AND DON'T DOWNLOAD ALL THE INDIVIDUAL FILES
 # sometimes just in the pathToSuppData without the RNASeqProcessed folder.
-concatenatedExonFeatureCounts <- read.csv(paste0(pathToSuppData, "/RNASeqProcessed/concatenatedExonFeatureCounts.csv"))[,-1]
+concatenatedExonFeatureCounts <- read.csv(paste0(pathToSuppData, "/RNASeqProcessed/concatenatedExonFeatureCounts.csv"))[,-1] # be sure to UNZIP
 concatenatedGeneFeatureCounts <- read.csv(paste0(pathToSuppData, "/RNASeqProcessed/concatenatedGeneFeatureCounts.csv"))[,-1]
 
 ```
@@ -182,8 +186,8 @@ tablesToWriteList <- list()
 tablesToWriteList[[1]] <- heatmapPre
 tablesToWriteList[[2]] <- heatmapPost
 tablesToWriteList[[3]] <- heatmapHIV
-names(tablesToWriteList) <- c("Pre read counts", "Post read counts", "HIV Read Counts")
-write.xlsx(tablesToWriteList, paste0(pathToSuppData, "/preSuppData6PerBP.xlsx"),rowNames=TRUE)
+names(tablesToWriteList) <- c("Pre read counts", "Post read counts", "HIV Read Counts") # to get read counts without dividing by the exon length, as in the real supp data 6, remove division by sum(as.numeric(featureCountsPart[,6])) in organizeHeatmapData.R function getCombinedExpression. Then re-run former code block.
+openxlsx::write.xlsx(tablesToWriteList, paste0(pathToSuppData, "/preSuppData6PerBP.xlsx"),rowNames=TRUE)
 
 
 fastI <- c(1:3,9:14) # indices of fast/slow/sense/antisense clones among the unique sites (averages replicates) in heatmapPostLogTPMAveraged
@@ -237,6 +241,7 @@ SpliceLevels %>%
         axis.title=element_text(size=0,face="bold")) 
 dev.off()
 
+library(dplyr)
 
 wilcox.test(pull(SpliceLevels[SpliceLevels$Class == "Sense",],Amount), pull(SpliceLevels[SpliceLevels$Class == "Antisense/Intergenic",],Amount))
 
