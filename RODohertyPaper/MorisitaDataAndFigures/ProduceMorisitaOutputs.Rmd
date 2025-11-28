@@ -8,7 +8,7 @@ Set paths, load in RDS files required and helping code.
 ```{r}
 library(Barnard)
 
-base = paste0(here::here(), "/Downloads/RODohertyPaper")
+base = here::here()
 
 source(paste0(base, "/MorisitaDataAndFigures/HelpingFunctions/TCRHelpFunctions.R"))
 source(paste0(base, "/MorisitaDataAndFigures/HelpingFunctions/OverlapMeasuresAndTests.R"))
@@ -22,7 +22,7 @@ CT2ObjectWMultiples = readRDS(paste0(base, "/MorisitaDataAndFigures/RDSObjects/C
 
 
 ##### SETS NUMBER OF PERMUTATIONS SHOWN IN EACH HISTOGRAM; SET TO 10,000 FOR MANUSCRIPT
-histogramSims = 10
+histogramSims = 1000
 
 
 
@@ -280,7 +280,7 @@ print(suppressMessages(permanovaFL(yCT1 ~ as.numeric(provirusObjects$CT1$newTime
 # Part B
  # add trendlines of morisita as funciton of time elapsed for several participants, and add the points for EC1/EC2
 (basePlot + ggtitle("Fig. 5b") + geom_point(size=10, alpha=0.4)) %>%
-  addToGraph(simpleObject = NewSimpleObjectsNoSubset$CT9, addPoints = FALSE, addLine = TRUE, lineCol = "#22c571dc", linetype = "dotted", lineSize = 4.5) %>%
+  addToGraph(simpleObject = provirusObjects$CT9, addPoints = FALSE, addLine = TRUE, lineCol = "#22c571dc", linetype = "dotted", lineSize = 4.5) %>%
   addToGraph(simpleObject = provirusObjects$CT1, addPoints = FALSE, addLine = TRUE, lineCol = "#20b98bff", linetype = "dashed", lineSize = 4.5) %>%
   addToGraph(simpleObject = provirusObjects$CT2, addPoints = FALSE, addLine = TRUE, lineCol = "#1B9E77", linetype = "solid", lineSize = 4.5) %>%
   addToGraph(simpleObject = provirusObjects$EC4, addPoints = FALSE, addLine = TRUE, lineCol = "#32a1e3ff", linetype = "dashed", lineSize = 4.5) %>%
@@ -339,9 +339,9 @@ Make and save Supp Data 7 and 8
 # Supp Data 7
 # Uses resamples = 10000 in paper
 
-correctedTCRObjects <- makeVennSheetsList(list(), correctedTCRObjects, "TCR", fullTCRTables = TCRFullTables, resamples = 10000)
+correctedTCRObjects <- makeVennSheetsList(list(), correctedTCRObjects, "TCR", fullTCRTables = TCRFullTables, resamples = 50)
 
-simpleObjectSheets <- makeVennSheetsList(list(), provirusObjects, "Proviruses", resamples = 10000)
+simpleObjectSheets <- makeVennSheetsList(list(), provirusObjects, "Proviruses", resamples = 50)
 simpleObjectSheets <- makeVennSheetsList(simpleObjectSheets, correctedTCRObjects)
 library(openxlsx)
 write.xlsx(simpleObjectSheets, file=paste0(base, "MorisitaDataAndFigures/SuppData/SupplementaryData7.xlsx"),rowNames=F, colNames=FALSE)
