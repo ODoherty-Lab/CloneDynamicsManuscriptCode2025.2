@@ -20,7 +20,7 @@ library(MASS)
 
 pathToSuppData <- paste0(base, "/IntegrationSiteDataAndFigures/SuppData/")
 
-growthTable <- data.frame(readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 2-UsedIntegrationSitesAndGenes.xlsx"), sheet = "Integration Site Table"))
+growthTable <- data.frame(readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 6-UsedIntegrationSitesAndGenes.xlsx"), sheet = "Integration Site Table"))
 colnames(growthTable) <- growthTable[1,]
 growthTable = growthTable[-1,]
 
