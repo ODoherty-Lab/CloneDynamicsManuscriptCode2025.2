@@ -20,7 +20,7 @@ source(paste0(base, "/InVitroDataAndFigures/HelpingFunctions/organizeHeatmapData
 
 pathToSuppData <- paste0(base, "/InVitroDataAndFigures/SuppData/")
 
-siteData <- readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 3- T Cell Clone Sites TPM.xlsx"))
+siteData <- readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 7- T Cell Clone Sites TPM.xlsx"))
 nameMatch <- read.csv(paste0(pathToSuppData, "NameLink.csv")) # CSV with two columns; first has processed RNA-seq file name and second has sample name in paper.
 
 ```
@@ -102,7 +102,7 @@ names(GeneIndicesFirstExon) <- names(GeneIndicesLastExon) <- siteDataUsedNoDupli
 ```
 
 
-Produces data for the heatmap, which is also Supp Data 6.
+Produces data for the heatmap, which is also Supp Data 8.
 
 Note there's really 3 heatmaps: the HIV expression, the pre-HIV gene expression, and the post-HIV gene expression.
 Each row is a sample and each column is a gene/annotation in the heatmap (note this is transpose of the feature counts annotations)
@@ -186,8 +186,8 @@ tablesToWriteList <- list()
 tablesToWriteList[[1]] <- heatmapPre
 tablesToWriteList[[2]] <- heatmapPost
 tablesToWriteList[[3]] <- heatmapHIV
-names(tablesToWriteList) <- c("Pre read counts", "Post read counts", "HIV Read Counts") # to get read counts without dividing by the exon length, as in the real supp data 6, remove division by sum(as.numeric(featureCountsPart[,6])) in organizeHeatmapData.R function getCombinedExpression. Then re-run former code block.
-openxlsx::write.xlsx(tablesToWriteList, paste0(pathToSuppData, "/preSuppData6PerBP.xlsx"),rowNames=TRUE)
+names(tablesToWriteList) <- c("Pre read counts", "Post read counts", "HIV Read Counts") # to get read counts without dividing by the exon length, as in the real supp data 8, remove division by sum(as.numeric(featureCountsPart[,6])) in organizeHeatmapData.R function getCombinedExpression. Then re-run former code block.
+openxlsx::write.xlsx(tablesToWriteList, paste0(pathToSuppData, "/preSuppData8PerBP.xlsx"),rowNames=TRUE)
 
 
 fastI <- c(1:3,9:14) # indices of fast/slow/sense/antisense clones among the unique sites (averages replicates) in heatmapPostLogTPMAveraged
