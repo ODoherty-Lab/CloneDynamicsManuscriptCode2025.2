@@ -333,10 +333,10 @@ for (i in 1:length(correctedTCRObjects)) {
 ```
 
 
-Make and save Supp Data 7 and 8
+Make and save Supp Data 3 and 4
 ```{r, eval = FALSE}
 
-# Supp Data 7
+# Supp Data 3
 # Uses resamples = 10000 in paper
 
 correctedTCRSheets <- makeVennSheetsList(list(), correctedTCRObjects, "TCR", fullTCRTables = TCRFullTables, resamples = 50)
@@ -344,11 +344,11 @@ correctedTCRSheets <- makeVennSheetsList(list(), correctedTCRObjects, "TCR", ful
 simpleObjectSheets <- makeVennSheetsList(list(), provirusObjects, "Proviruses", resamples = 50)
 simpleObjectSheets <- c(simpleObjectSheets, correctedTCRSheets)
 library(openxlsx)
-write.xlsx(simpleObjectSheets, file=paste0(base, "/MorisitaDataAndFigures/SuppData/SupplementaryData7.xlsx"),rowNames=F, colNames=FALSE) # note due to rounding off each timepoints, the timepoint differences may be 0.1 off from rounded true differences recorded in true Supp Data 7.
+write.xlsx(simpleObjectSheets, file=paste0(base, "/MorisitaDataAndFigures/SuppData/SupplementaryData3.xlsx"),rowNames=F, colNames=FALSE) # note due to rounding off each timepoints, the timepoint differences may be 0.1 off from rounded true differences recorded in true Supp Data 3.
 
 
 
-# Supp Data 8
+# Supp Data 4
 # Uses resamples = 10000 in paper.
 CT1s <- getPairwiseComparisonSheet(provirusObjects$CT1, correctedTCRObjects$CT1, TCRFullTables$CT1, resamples = 50)
 CT2s <- getPairwiseComparisonSheet(provirusObjects$CT2, correctedTCRObjects$CT2, TCRFullTables$CT2, resamples = 50)
@@ -357,7 +357,7 @@ CT9s <- getPairwiseComparisonSheet(provirusObjects$CT9, correctedTCRObjects$CT9,
 EC4s <- getPairwiseComparisonSheet(provirusObjects$EC4, correctedTCRObjects$EC4, TCRFullTables$EC4, resamples = 50)
 EC5s <- getPairwiseComparisonSheet(provirusObjects$EC5, correctedTCRObjects$EC5, TCRFullTables$EC5, resamples = 50)
 together = list(CT1=CT1s, CT2=CT2s, CT8 = CT8s, CT9=CT9s, EC4=EC4s, EC5=EC5s)
-write.xlsx(together, file=paste0(base, "/MorisitaDataAndFigures/SuppData/SupplementaryData8.xlsx"), rowNames = F, colNames = F)
+write.xlsx(together, file=paste0(base, "/MorisitaDataAndFigures/SuppData/SupplementaryData4.xlsx"), rowNames = F, colNames = F)
 
 
 ```
