@@ -236,7 +236,7 @@ basePlot2 <- ggplot(Setup2, aes(x = Time_Elapsed, y = Logit_Distance,color=Time_
   addToGraph(simpleObject = early, addPoints = FALSE, addLine = TRUE, lineCol = "#1B9E77", linetype = "solid", lineSize = 6) # addToGraph auto-adds regression line for CT2.
 
 
-(basePlot2 + ggtitle("Supp Figure Late Timepoints) + geom_point(size=12, alpha=0.65)) %>% 
+(basePlot2 + ggtitle("Supp Figure Late Timepoints") + geom_point(size=12, alpha=0.65)) %>% 
   addToGraph(simpleObject = late, addPoints = FALSE, addLine = TRUE, lineCol = "#1B9E77", linetype = "solid", lineSize = 6) # addToGraph auto-adds regression line for CT2.
 
 
@@ -278,7 +278,7 @@ print(suppressMessages(permanovaFL(yCT1 ~ as.numeric(provirusObjects$CT1$newTime
 
 
 # Part B
- # add trendlines of morisita as funciton of time elapsed for several participants, and add the points for EC1/EC2
+ # add trendlines of morisita as funciton of time elapsed for several participants, and add the points for EC4/EC5
 (basePlot + ggtitle("Fig. 5b") + geom_point(size=10, alpha=0.4)) %>%
   addToGraph(simpleObject = provirusObjects$CT9, addPoints = FALSE, addLine = TRUE, lineCol = "#22c571dc", linetype = "dotted", lineSize = 4.5) %>%
   addToGraph(simpleObject = provirusObjects$CT1, addPoints = FALSE, addLine = TRUE, lineCol = "#20b98bff", linetype = "dashed", lineSize = 4.5) %>%
@@ -325,8 +325,8 @@ for (i in 1:length(correctedTCRObjects)) {
   addToGraph(simpleObject = correctedTCRObjects$CT2, distanceMat = -TCRDistMats$CT2, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
   addToGraph(simpleObject = correctedTCRObjects$CT1, distanceMat = -TCRDistMats$CT1, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
   addToGraph(simpleObject = correctedTCRObjects$CT9, distanceMat = -TCRDistMats$CT9, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
- addToGraph(simpleObject = correctedTCRObjects$EC1, distanceMat = -TCRDistMats$EC1, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
-  addToGraph(simpleObject = correctedTCRObjects$EC2, distanceMat = -TCRDistMats$EC2, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8)
+ addToGraph(simpleObject = correctedTCRObjects$EC4, distanceMat = -TCRDistMats$EC4, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8) %>%
+  addToGraph(simpleObject = correctedTCRObjects$EC5, distanceMat = -TCRDistMats$EC5, addPoints = TRUE, addLine = FALSE, pointCol = "#d1acfeff", psize = 8)
 
 
 
