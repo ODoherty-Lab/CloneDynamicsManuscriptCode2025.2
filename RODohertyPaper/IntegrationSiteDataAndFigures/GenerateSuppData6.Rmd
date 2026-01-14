@@ -88,7 +88,7 @@ library(openxlsx)
 # get versions with only intronic integration sites 
 CT1CT2MergedTablesIntron <- CT1CT2MergedTables
 for (i in 1:length(CT1CT2MergedTables)) {
-  CT1CT2MergedTablesIntron[[i]] <- keepIntronic(CT1CT2MergedTablesIntron[[i]])
+  CT1CT2MergedTablesIntron[[i]] <- keepIntronicAll(CT1CT2MergedTablesIntron[[i]])
 }
 
 #### format into supp data 6. Remove non-introns and then redo merging exactly as above except with keepIntronic:
