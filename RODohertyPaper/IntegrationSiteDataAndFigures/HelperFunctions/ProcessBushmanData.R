@@ -349,6 +349,16 @@ keepIntronic <- function(mat) {
   mat
 }
 
+
+# takes a data matrix like the output of processSecondBushmanFile or processOriginalBushmanFile
+# removes rows which aren't intronic integration sites, as indicated by 5th column containing "notIntronic. Remember first row is headings.
+keepIntronicAll <- function(mat) {
+  toDel = grep("notIntronic", mat[,5])
+  if (length(toDel) > 0) mat <- mat[-toDel,]
+  mat
+}
+
+
 # takes outputs of processFirstBushmanFile and a chain to convert hg38 to T2T (from internet).
 # converts output coordinates to be in T2T
 # A few unconvertible intergenic sites are prepended with "hg38:" and the one unconvertible intronic site being brought to most likely T2T location but appended with "B" as in "chr7-44777049B" 
@@ -438,6 +448,42 @@ mergeCols <- function(table1, cols, cols2) {
   table1
 }
 
+# merges outputs of processFirstBushmanFile and processSecondBushmanFile respectively, after converting first output to T2T coordinates
+# we treat the timepoints from the second bushman file as distinct from the first timepoint for now, and then merge them in a separate function
+# removes 8th column of processSecondBushmanFile output as it's all 0s.
+# for each newer integration site row from processSecondBushmanFile, tries to match its position ID
+# different from mergeTables because if same site is intronic in table1 and intergenic in table2, or vice versa, 
+# mergeTables will label them both with the annotation of table1, whereas this will put the two sites on different rows
+# with table1's clone labeled "intronic (earlier hg38-associated annotations)" and table2's clone labeled "notIntronic" (later T2T-associated annotations)"
+# to help witht his, table1 "exonic"/"intergenic" get turned to "notIntronic"
+mergeTablesSeparateAnnotations <- function(table1, table2) {
+  table2 <- table2[,-8] # 8th column of newer data is an empty timepoint; all 0 column.
+  
+  newTable <- cbind(table1, matrix(0, nrow(table1), ncol(table2)-7)) # adds a bunch of columns of 0s representing timepoints from newer bushman data
+  notIntronicRows <- as.numeric(which(newTable[,5] != "intronic"))[-1] # remove first row as this is just column labels
+  newTable[notIntronicRows,5] <- "notIntronic"
+  
+  for (i in 2:nrow(table2)) { # remember first row is just column titles
+    rowIndex <- which(table2[i,1] == newTable[,1]) # row index the new site table2[i,1] was seen before, if it has been.
+    if (length(rowIndex) == 0) { # if the new data integration site has not been seen before (converted to T2T), creates new row.
+      # the new row has 7 metadata columns from table2. It then has 0s for all timepoints associated with first Bushman sequencing (=ncol(table1)-2), and then the timepoints corresponding to number of times observed in table2
+      newTable <- rbind(newTable, c(table2[i, 1:7], rep(0, ncol(table1)-7), table2[i, 8:ncol(table2)])) 
+    }
+    else if (length(rowIndex) > 1) print(c("ERROR", i)) # shouldn't happen
+    else { # if the new data integration site has been seen before (converted to T2T), combines it into old row IF same version of intronic vs notIntronic
+      if (newTable[rowIndex,5] == table2[i,5]) newTable[rowIndex, (ncol(table1)+1):ncol(newTable)] <- table2[i, 8:ncol(table2)] # 1:ncol(table1 are metadata (which doesn't change) and observations in timepoints from first Bushman sampling (also unchanged). 
+      
+      else {
+        newTable[rowIndex, 5] <- paste0(newTable[rowIndex, 5], " (earlier hg38-associated annotations)")
+        table2[i, 5] <- paste0(table2[i, 5], " (later T2T-associated annotations)")
+        newTable <- rbind(newTable, c(table2[i, 1:7], rep(0, ncol(table1)-7), table2[i, 8:ncol(table2)])) 
+      }
+      
+      
+    }
+  }
+  newTable
+}
 
 
 
