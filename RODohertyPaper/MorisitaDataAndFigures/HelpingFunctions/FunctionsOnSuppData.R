@@ -13,11 +13,11 @@ TCRRDSToCorrectedTCRRDS <- function(pathToTCRSimpleObjectsRDS, outFolderPath, ve
   saveRDS(TCRsCorrected, paste0(outFolderPath, "/TCRSimpleObjectsPCorrected.rds"))
 }
 
-# Takes character path to supp data of proviruses (Supp Data 5), and a fold path - where to save output RDS files.
+# Takes character path to supp data of proviruses (Supp Data 1), and a fold path - where to save output RDS files.
 # Makes list of simple data objects, one for each participant, named by participant names. 
 # Saves as ProvirusSimpleObjects.rds in given path.
 # also for CT2, saves a version of simple object at same folder, "CT2WMultiples.rds", which has different row for replicate timepoints.
-RDSFromSuppData5 <- function(pathToSuppData, outFolderPath, verbose = T) {
+RDSFromSuppData1 <- function(pathToSuppData, outFolderPath, verbose = T) {
   sheets <- openxlsx::getSheetNames(pathToSuppData)
   sheets <- sheets[grep("Provirus", sheets)] # TCRs we deal with separately.
   
@@ -29,21 +29,21 @@ RDSFromSuppData5 <- function(pathToSuppData, outFolderPath, verbose = T) {
   # takes each sheet of the supp data, and turns it into a simple object in a simple object list, named by participant
   for (sheet in sheets) {
     if (verbose) print(paste0("working on sheet ", sheet))
-    readSheet <- readAndCleanSuppData5(pathToSuppData, sheet = sheet)
+    readSheet <- readAndCleanSuppData1(pathToSuppData, sheet = sheet)
     provirusObjects[[participants[sheet]]] <- makeSimpleObject(readSheet, colnames(readSheet))
   }
   
-  CT2MultiplesSheet <- readAndCleanSuppData5(pathToSuppData, sheet = "CT2Provirus", countMults = T)
+  CT2MultiplesSheet <- readAndCleanSuppData1(pathToSuppData, sheet = "CT2Provirus", countMults = T)
   
   saveRDS(provirusObjects, paste0(outFolderPath, "/ProvirusSimpleObjects.rds"))
   saveRDS(makeSimpleObject(CT2MultiplesSheet, colnames(CT2MultiplesSheet)), paste0(outFolderPath, "/CT2WMultiples.rds"))
 }
 
-# read in supp data 5 sheet and fix col names
-# takes path to supp data 5 and sheet name, and reads it in
+# read in supp data 1 sheet and fix col names
+# takes path to supp data 1 and sheet name, and reads it in
 # making sure reading in doubles of col names didn't mess them up
 # if countMults, keeps s1 and s2 separate. If not, merges them. 
-readAndCleanSuppData5 <- function(pathToSuppData, sheet, countMults = FALSE) {
+readAndCleanSuppData1 <- function(pathToSuppData, sheet, countMults = FALSE) {
   readSheet <- makeNumeric(readxl::read_xlsx(pathToSuppData, sheet = sheet, skip = 1))
   colnames(readSheet) <- unlist(lapply(strsplit(colnames(readSheet), " S"), function(x){x[1]}))
   colnames(readSheet) <- round(as.numeric(colnames(readSheet)), 5) # read_xlsx apparently has bad double handling and is adding noise.
@@ -65,11 +65,11 @@ readAndCleanSuppData5 <- function(pathToSuppData, sheet, countMults = FALSE) {
   readSheet
 }
 
-# Takes character path to supp data of TCRs (Supp Data 4), and a fold path - where to save output RDS files.
+# Takes character path to supp data of TCRs (Supp Data 2), and a fold path - where to save output RDS files.
 # Makes (1) list of TCR simple data objects, one for each participant, named by participant names. 
 # Makes (2) list of read Excel sheets directly from supp data, for permutation test, named by participant names
 # Saves (1) as TCRSimpleObjects.rds and (2) as TCRFullTables.rds in given path.
-RDSFromSuppData4  <- function(pathToSuppData, outFolderPath, verbose = T) {
+RDSFromSuppData2  <- function(pathToSuppData, outFolderPath, verbose = T) {
   
   sheets <- openxlsx::getSheetNames(pathToSuppData)
   TCRs <- list()
