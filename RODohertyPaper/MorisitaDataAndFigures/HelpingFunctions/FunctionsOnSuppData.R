@@ -82,8 +82,7 @@ RDSFromSuppData2  <- function(pathToSuppData, outFolderPath, verbose = T) {
     
     # some column names were spelled out for supp data that aren't in the originally processed versions; change col names back
     colnames(input)[1] = "TCRbeta" 
-    # replace -Total Reads with -AllCount and -Number of Positive Reps" with "-NumPositiveReps"
-    colnames(input)[grep("Total Reads", colnames(input))] <- paste(paste0(lapply(strsplit(colnames(input)[grep("Total Reads", colnames(input))], "-"), function(x){x[1]})), "AllCount", sep="-")
+    # replace -Number of Positive Reps" with "-NumPositiveReps"
     colnames(input)[grep("Number of Posi", colnames(input))] <- paste(paste0(lapply(strsplit(colnames(input)[grep("Number of Posi", colnames(input))], "-"), function(x){x[1]})), "NumPositiveReps", sep="-")
     
     TCRFullTables[[sheet]] <- input
