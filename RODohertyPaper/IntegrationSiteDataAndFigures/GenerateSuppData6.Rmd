@@ -1,5 +1,5 @@
 ---
-title: "GenerateSuppData2"
+title: "GenerateSuppData6"
 author: "Sam Weissman"
 date: "2025-11-24"
 output: html_document
@@ -34,17 +34,17 @@ BushmanDataSecond <- processSecondBushmanFile(newData)
 
 ```
 
-Merge new and old Bushman data, make supp data 1.
+Merge new and old Bushman data, make supp data 5.
 ```{r}
 CT1CT2MergedTables <- list()
 # mergeTables is just merging rows with same integration site between old and new data, and adding extra columns for timepoints of second Bushman data.
-CT1CT2MergedTables[[1]] <- mergeTables(BushmanDataFirstT2T[[1]], BushmanDataSecond[[1]]) # column 15 is new at 10.4 years on ART. column 16 is same time as 13. Column 17 similarly goes with 14
+CT1CT2MergedTables[[1]] <- mergeTablesSeparateAnnotations(BushmanDataFirstT2T[[1]], BushmanDataSecond[[1]]) # column 15 is new at 10.4 years on ART. column 16 is same time as 13. Column 17 similarly goes with 14
 # merge columns from same timepoint between new and old data by adding them together, and set right column header for column 15.
 CT1CT2MergedTables[[1]] <- mergeCols(CT1CT2MergedTables[[1]], c(13,14), c(16,17))
 CT1CT2MergedTables[[1]][1, 15] <- 10.4
 
 
-CT1CT2MergedTables[[2]] <- mergeTables(BushmanDataFirstT2T[[2]], BushmanDataSecond[[2]]) # column 12 is new at 13.20 years on ART. Column 13 is new at 14.24 years on ART.
+CT1CT2MergedTables[[2]] <- mergeTablesSeparateAnnotations(BushmanDataFirstT2T[[2]], BushmanDataSecond[[2]]) # column 12 is new at 13.20 years on ART. Column 13 is new at 14.24 years on ART.
 # set correct column headers for new Bushman data.
 CT1CT2MergedTables[[2]][1, 12] <- 13.2
 CT1CT2MergedTables[[2]][1, 13] <- 14.24
@@ -62,20 +62,27 @@ CT1CT2MergedTables[[4]]  <-  cleanNewMatrix(BushmanDataSecond[[4]], c(2.3, 4.27)
 CT1CT2MergedTables[[5]]  <-  cleanNewMatrix(BushmanDataSecond[[5]], c(4.88, 5.72))
 names(CT1CT2MergedTables) <- names(BushmanDataSecond)[1:5]
 
+# little help to reorder columns for supp data 5.
+reorderSupp5Cols <- function(mat) {
+  ordered <- order(as.numeric(mat[1,-c(1:4)]))
+  mat <- mat[,c(1:4, 4+ordered)]
+  mat
+}
 
-toOutput <- CT1CT2MergedTables # tidy up for supp data 1
+toOutput <- CT1CT2MergedTables # tidy up for supp data 5
 for (i in 1:length(toOutput)) {
   toOutput[[i]][,2] = gsub(" .*","",toOutput[[i]][,2]) # tidy up gene names
-  toOutput[[i]][which(toOutput[[i]][,5] == "exonic"),5] = "notIntronic"
+  toOutput[[i]][,2] = manyAliasToSymbol(toOutput[[i]][,2]) # tidy up gene names
   toOutput[[i]] =  toOutput[[i]][,-c(4, 6,7)]
+  toOutput[[i]] = reorderSupp5Cols(toOutput[[i]])
 }
 
 
 
 library(openxlsx)
-#write.xlsx(toOutput, file=paste0(base, "/IntegrationSiteDataAndFigures/SupplementaryData1Pre.xlsx"),rowNames=F, colNames=FALSE) # in real supp data 1 we rearrange columns a bit.
+#write.xlsx(toOutput, file=paste0(base, "/IntegrationSiteDataAndFigures/SupplementaryData5Pre.xlsx"),rowNames=F, colNames=FALSE)
 
-# make the formatting of it in Supp Data 2.
+# make the formatting of it in Supp Data 6.
 
 
 # get versions with only intronic integration sites 
@@ -84,7 +91,7 @@ for (i in 1:length(CT1CT2MergedTables)) {
   CT1CT2MergedTablesIntron[[i]] <- keepIntronic(CT1CT2MergedTablesIntron[[i]])
 }
 
-#### format into supp data 2. Remove non-introns and then redo merging exactly as above except with keepIntronic:
+#### format into supp data 6. Remove non-introns and then redo merging exactly as above except with keepIntronic:
 CT1CT2MergedTablesIntronic <- list()
 CT1CT2MergedTablesIntronic[[1]] <- mergeTables(keepIntronic(BushmanDataFirstT2T[[1]]), keepIntronic(BushmanDataSecond[[1]]))
 CT1CT2MergedTablesIntronic[[1]] <- mergeCols(CT1CT2MergedTablesIntronic[[1]], c(13,14), c(16,17))
@@ -96,7 +103,7 @@ CT1CT2MergedTablesIntronic[[3]] <- cleanNewMatrix(keepIntronic(BushmanDataSecond
 CT1CT2MergedTablesIntronic[[4]]  <-  cleanNewMatrix(keepIntronic(BushmanDataSecond[[4]]), c(2.3, 4.27))
 CT1CT2MergedTablesIntronic[[5]]  <-  cleanNewMatrix(keepIntronic(BushmanDataSecond[[5]]), c(4.88, 5.72))
 names(CT1CT2MergedTablesIntronic) <- names(BushmanDataSecond)[1:5]
-OurCTs <- processCTMats(CT1CT2MergedTablesIntronic) # make supp data 2 format
+OurCTs <- processCTMats(CT1CT2MergedTablesIntronic) # make supp data 6 format
 
 
 ```
@@ -154,7 +161,7 @@ for (i in 1:length(Hughes2)) {
 # at different timepoints at indices sizeColNums, gene symbols of the site in column at index geneColNum,
 # participants in column at index participantColNum.
 # if transformAliases is True, it will also convert all gene symbols to standard aliases, although ours already have been.
-# this function specifies it to the Guo data and outputs table formatted like in supp data 2. 
+# this function specifies it to the Guo data and outputs table formatted like in supp data 6. 
 HughesTableToStandardParticipant <- function(inTable) {
   sizeColNums <- 10:(ncol(inTable)-1)
   tableToStandardParticipant(inTable, geneColNum = 6, oriColNum=ncol(inTable), sizeColNums = sizeColNums, participantColNum = 1, transformAliases=FALSE)
@@ -164,13 +171,13 @@ HughesTableToStandardParticipant <- function(inTable) {
 HughesStandardTable <- lapply(Hughes2, HughesTableToStandardParticipant)
 HughesTogetherTable <- mergeParticipantTables(HughesStandardTable) 
 
-allCombined <- mergeParticipantTables(list(a=OurCTs, b=HughesTogetherTable)) # note not quite identical to supp data 2 as inevitably some aliases changed names but identical if you re-alias supp data 2.
+allCombined <- mergeParticipantTables(list(a=OurCTs, b=HughesTogetherTable)) # note not quite identical to supp data 6 as inevitably some aliases changed names but identical if you re-alias supp data 6.
 
 allCombined$Orientation <- ifelse(allCombined$Orientation == 1, "Sense", "Antisense")
 
 ```
 
-Get lists of growth-related genes and highly-expressed genes as in supp data 2 sheets 2/3
+Get lists of growth-related genes and highly-expressed genes as in supp data 6 sheets 2/3
 ```{r}
 #Directly from Horlbeck et al. supp table 10, with genes that Excel converted into dates corrected as much as possible. The last two columns I added and are irrelevant. "Unclear" means Excel converted gene name to a date that could be one of two genes.
 
@@ -196,7 +203,7 @@ ExpressiveGeneSet <- unique(coffinExpressionData$Name[as.numeric(coffinExpressio
 ExpressiveGeneSetExclusive <- ExpressiveGeneSet[-which(ExpressiveGeneSet %in% growthRelatedGenes)] # highly expressed and not growth-related.
 
 
-# can use these to generate figures, are similar in format to supp data 2 and same in content.
+# can use these to generate figures, are similar in format to supp data 6 and same in content.
 growthRelatedTable <- expressedTable <- allCombined
 growthRelatedTable[,4] <- growthRelatedTable[,2] %in% growthRelatedGenes
 expressedTable[,4] <- expressedTable[,2] %in% ExpressiveGeneSetExclusive
