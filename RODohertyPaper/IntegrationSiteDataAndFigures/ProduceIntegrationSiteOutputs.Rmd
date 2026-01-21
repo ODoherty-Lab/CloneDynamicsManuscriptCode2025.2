@@ -39,7 +39,7 @@ participantSets <- list(c("F07","C03","R09"),c("CT1","CT2","CT3","CT8","CT9"))
 
 library(MASS)
 
-doEverythingForIDSet(growthRelatedTable, paste0(pathToSuppData, "/Growth Table/"), participantSets, plotAntisense = FALSE, oneSided = 1)
+doEverythingForIDSet(growthTable, paste0(pathToSuppData, "/Growth Table/"), participantSets, plotAntisense = FALSE, oneSided = 1)
 
 doEverythingForIDSet(expressedTable, paste0(pathToSuppData, "/Expressive Table/"), participantSets, plotAntisense = FALSE, oneSided = 2)
 
