@@ -20,7 +20,7 @@ source(paste0(base, "/InVitroDataAndFigures/HelpingFunctions/organizeHeatmapData
 
 pathToSuppData <- paste0(base, "/InVitroDataAndFigures/SuppData/")
 
-siteData <- readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 7- T Cell Clone Sites TPM.xlsx"))
+siteData <- readxl::read_xlsx(paste0(pathToSuppData, "Supplementary Data 7-T Cell Clone Sites TPM.xlsx"))
 nameMatch <- read.csv(paste0(pathToSuppData, "NameLink.csv")) # CSV with two columns; first has processed RNA-seq file name and second has sample name in paper.
 
 ```
