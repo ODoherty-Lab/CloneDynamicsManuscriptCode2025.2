@@ -14,4 +14,3 @@ Supp Data containing a clean version of source data should be downloaded from pa
 
 Depending on demand and constraints we might add more general information about code objects to this README page. That said, we intend the present comments, currently present throughout the code, to be  sufficient to follow all objects and functions throughout the code, so please reach out if they fail to do. 
 
-Please be aware that supplemental data changes underwent superficial numbering changes recently, which are now reflected in the code, which should not interfere with functioning but this will be confirmed through re-testing this weekend (on 1/17/26).
