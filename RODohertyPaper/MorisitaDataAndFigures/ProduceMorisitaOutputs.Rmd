@@ -1,9 +1,10 @@
 ---
-title: "ProduceMorisitaFiguresAndSuppData78"
+title: "ProduceMorisitaFiguresAndSuppData34"
 author: "Sam Weissman"
 output: html_document
 ---
 
+Be sure to first run the SuppDataToRDSObjects.R code.
 Set paths, load in RDS files required and helping code.
 ```{r}
 library(Barnard)
