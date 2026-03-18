@@ -99,6 +99,11 @@ for (i in 1:nrow(siteDataUsedNoDuplicates)) {
 
 names(GeneIndicesFirstExon) <- names(GeneIndicesLastExon) <- siteDataUsedNoDuplicates$Gene
 
+# for genes where HIV was before last exon, the code hits an edge case and also includes the index of the exon after the end of the gene in addition to the end of the gene, so this just fixes those. Can verify by checking GeneIndicesLastExon$MYB and GeneIndicesLastExon$C5orf24 before these updates.
+GeneIndicesLastExon$MYB = 323360
+GeneIndicesLastExon$C5orf24 = 273393
+
+
 ```
 
 
