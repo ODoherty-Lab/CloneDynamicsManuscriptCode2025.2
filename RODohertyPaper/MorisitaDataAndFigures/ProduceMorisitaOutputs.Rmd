@@ -46,10 +46,10 @@ print(outTable)
 
 # HYPOTHESIS TESTS OF TABLE 2B
 pVals6.1vs8.9 <- apply(outTable[,-ncol(outTable)], 2, function(vec) {
-  quiet_barnard(vec[1], vec[2], totalProvirusesSequenced[1], totalProvirusesSequenced[2])*2 # Two-sided Barnard with Bonferroni correct for two comparisons between timepoints
+  quiet_barnard(vec[1], vec[2], totalProvirusesSequenced[1]-vec[1], totalProvirusesSequenced[2]-vec[2])*2 # Two-sided Barnard with Bonferroni correct for two comparisons between timepoints
 })
 pVals8.9vs9.9 <- apply(outTable[,-ncol(outTable)], 2, function(vec) {
-  quiet_barnard(vec[2], vec[3], totalProvirusesSequenced[2], totalProvirusesSequenced[3])*2
+  quiet_barnard(vec[2], vec[3], totalProvirusesSequenced[2]-vec[2], totalProvirusesSequenced[3]-vec[3])*2
 })
 
 significant <- paste(which(as.numeric(indexWiseMin(pVals6.1vs8.9, pVals8.9vs9.9)) < .05), collapse = ", ")
